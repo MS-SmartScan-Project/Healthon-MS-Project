@@ -60,7 +60,7 @@ if (isset($_POST['add_patient'])) {
 
     <span class="status-dot"></span>
 
-    <span class="status-text">System Online</span>
+    <span class="status-text">System nline</span>
 
 </div>
 
