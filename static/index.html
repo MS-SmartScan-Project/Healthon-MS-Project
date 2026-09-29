@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MS SmartScan · الكشف المبكر عن التصلب المتعدد</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%233b82f6'/%3E%3Ccircle cx='12' cy='12' r='6' fill='none' stroke='white' stroke-width='2'/%3E%3Ccircle cx='14' cy='10.5' r='1.6' fill='white'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- رسم توضيحي لمقطع رنين (يُستخدم في الواجهة فقط) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="tissue" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#c9d4e3"/><stop offset=".55" stop-color="#8a9bb3"/><stop offset="1" stop-color="#435069"/></radialGradient>
+    <radialGradient id="lesion" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff"/><stop offset=".6" stop-color="#eef6ff" stop-opacity=".9"/><stop offset="1" stop-color="#eef6ff" stop-opacity="0"/></radialGradient>
+    <symbol id="brain" viewBox="0 0 200 240">
+      <ellipse cx="100" cy="120" rx="92" ry="112" fill="#0b1220" stroke="#64748b" stroke-width="5"/>
+      <ellipse cx="100" cy="120" rx="80" ry="100" fill="url(#tissue)"/>
+      <g fill="none" stroke="#2b3647" stroke-width="2.2" stroke-linecap="round" opacity=".7">
+        <path d="M100 22v196M40 60c10 8 18 6 26 14s4 18 14 22M160 60c-10 8-18 6-26 14s-4 18-14 22M30 110c14 0 16 12 30 10s14-14 26-8M170 110c-14 0-16 12-30 10s-14-14-26-8M36 160c12-6 20 4 30-4s18-4 22 6M164 160c-12-6-20 4-30-4s-18-4-22 6M58 200c8-10 20-6 28-14M142 200c-8-10-20-6-28-14M60 38c6 10 16 10 22 20M140 38c-6 10-16 10-22 20"/>
+      </g>
+      <path d="M92 92c-10 4-22 16-20 34s10 22 16 20 4-14 6-24 2-26-2-30ZM108 92c10 4 22 16 20 34s-10 22-16 20-4-14-6-24-2-26 2-30Z" fill="#1a2231"/>
+      <ellipse cx="70" cy="96" rx="7" ry="5" fill="url(#lesion)"/><ellipse cx="134" cy="138" rx="6" ry="8" fill="url(#lesion)"/><ellipse cx="118" cy="70" rx="5" ry="4" fill="url(#lesion)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ============ الشريط العلوي ============ -->
+<header class="nav" id="nav">
+  <div class="wrap nav-in">
+    <a href="#top" class="brand">
+      <span class="logo"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M5 12h3l2-4 3 8 2-4h4"/></svg></span>
+      <span>MS <b>SmartScan</b></span>
+    </a>
+    <nav class="links">
+      <a href="#idea">الفكرة</a>
+      <a href="#scan">الفحص</a>
+      <a href="#history">السجل</a>
+    </nav>
+    <span class="model-chip" id="modelChip" data-state="loading"><i></i><span>جاري تحميل النموذج…</span></span>
+  </div>
+</header>
+
+<main id="top">
+  <!-- ============ الواجهة ============ -->
+  <section class="hero">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+    <div class="wrap hero-in">
+      <div class="hero-text">
+        <span class="pill">جهاز ذكي · Raspberry Pi · YOLO11</span>
+        <h1>اكتشاف <span class="grad">التصلب المتعدد</span> من صورة الرنين خلال ثوانٍ</h1>
+        <p class="lead">جهاز يلتقط صورة الرنين المغناطيسي، ويحللها بالذكاء الاصطناعي، ويحدد مكان البؤر ونسبة التأكد — ليكون عيناً ثانية بجانب الطبيب.</p>
+        <div class="cta">
+          <a href="#scan" class="btn btn-main btn-lg">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M3 12h18"/></svg>
+            ابدأ الفحص الآن
+          </a>
+          <a href="#idea" class="btn btn-soft btn-lg">تعرّف على الفكرة</a>
+        </div>
+        <div class="metrics">
+          <div><b>99.1%</b><span>Precision</span></div>
+          <div><b>97.2%</b><span>Recall</span></div>
+          <div><b>99.2%</b><span>mAP50</span></div>
+          <small>نتائج التحقق المسجّلة داخل النموذج best.pt</small>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="device">
+          <div class="device-top"><span class="dots"><i></i><i></i><i></i></span><span>MRI · FLAIR</span><span class="live"><i></i> تحليل</span></div>
+          <div class="mri">
+            <svg viewBox="0 0 200 240"><use href="#brain"/></svg>
+            <div class="sweep"></div>
+            <span class="box k1"></span><span class="box k2"></span><span class="box k3"></span>
+          </div>
+          <div class="device-foot"><span class="tag bad">تم اكتشاف بؤر</span><small>رسم توضيحي</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ الفكرة ============ -->
+  <section class="sec" id="idea">
+    <div class="wrap">
+      <div class="head"><span class="kicker">الفكرة</span><h2>لماذا MS SmartScan؟</h2></div>
+      <div class="cards3">
+        <article class="card c-problem">
+          <span class="c-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          <h3>المشكلة</h3>
+          <p>قراءة صور الرنين يدوياً تأخذ وقتاً، وقد تفوت بؤر صغيرة مع ضغط العمل، ونقص الأطباء المختصين يؤخر التشخيص.</p>
+        </article>
+        <article class="card c-solution">
+          <span class="c-ic"><svg viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 3 3 3 3 0 0 0 3-3V7a3 3 0 0 0-3-3ZM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-3 3 3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Z"/></svg></span>
+          <h3>الحل</h3>
+          <p>نموذج ذكاء اصطناعي مدرَّب على صور الرنين يكشف بؤر التصلب ويحدد مكانها ونسبة التأكد خلال ثوانٍ.</p>
+        </article>
+        <article class="card c-device">
+          <span class="c-ic"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg></span>
+          <h3>الجهاز</h3>
+          <p>يعمل على Raspberry Pi مع كاميرا وشاشة، والتحليل كله داخل الجهاز بدون إنترنت، فتبقى صور المرضى في المنشأة.</p>
+        </article>
+      </div>
+
+      <ol class="flow">
+        <li><span>1</span><b>التقاط الصورة</b><small>كاميرا الجهاز أو رفع ملف</small></li>
+        <li><span>2</span><b>تحسين التباين</b><small>خوارزمية CLAHE</small></li>
+        <li><span>3</span><b>كشف البؤر</b><small>نموذج YOLO11 · best.pt</small></li>
+        <li><span>4</span><b>النتيجة</b><small>مكان البؤر + نسبة التأكد</small></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ الفحص ============ -->
+  <section class="sec sec-tint" id="scan">
+    <div class="wrap">
+      <div class="head"><span class="kicker">الفحص</span><h2>جرّب الفحص الذكي</h2><p>التقط صورة الرنين بالكاميرا أو ارفعها من جهازك، ثم اضغط «تحليل».</p></div>
+
+      <div class="studio">
+        <!-- العارض -->
+        <div class="panel viewer-panel">
+          <div class="tabs" role="tablist">
+            <button class="tab on" data-mode="camera" role="tab">
+              <svg class="ic" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.5" r="3.5"/></svg> الكاميرا
+            </button>
+            <button class="tab" data-mode="upload" role="tab">
+              <svg class="ic" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg> رفع صورة
+            </button>
+          </div>
+
+          <div class="viewer" id="viewer">
+            <video id="video" autoplay playsinline muted></video>
+            <img id="preview" alt="" hidden>
+            <div class="frame"><i></i><i></i><i></i><i></i></div>
+            <div class="sweep" id="sweep" hidden></div>
+
+            <div class="overlay" id="camGate">
+              <span class="o-ic"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.5" r="3.5"/></svg></span>
+              <b>شغّل الكاميرا</b>
+              <p>وجّهها على صورة الرنين داخل الإطار</p>
+              <button class="btn btn-main" id="startCam">تشغيل الكاميرا</button>
+              <small class="err" id="camErr"></small>
+            </div>
+
+            <label class="overlay drop" id="dropZone" hidden>
+              <input type="file" id="fileInput" accept="image/*" hidden>
+              <span class="o-ic"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg></span>
+              <b>اسحب صورة الرنين هنا</b>
+              <p>أو اضغط لاختيار ملف (PNG / JPG)</p>
+              <span class="btn btn-main">اختيار صورة</span>
+            </label>
+          </div>
+
+          <div class="viewer-bar">
+            <select id="camSelect" hidden aria-label="اختيار الكاميرا"></select>
+            <button class="btn btn-soft" id="resetBtn" hidden>صورة جديدة</button>
+            <button class="btn btn-main btn-lg" id="analyzeBtn" disabled>
+              <svg class="ic" viewBox="0 0 24 24"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M3 12h18"/></svg>
+              <span>التقاط وتحليل</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- الجانب -->
+        <aside class="side">
+          <div class="panel">
+            <h3 class="p-title">بيانات المريض <small>(اختياري)</small></h3>
+            <div class="fields">
+              <label><span>الاسم</span><input id="patient" maxlength="80" placeholder="مثال: نورة"></label>
+              <label><span>الرقم الطبي</span><input id="patientId" maxlength="30" inputmode="numeric" placeholder="مثال: 1001"></label>
+            </div>
+          </div>
+
+          <div class="panel result idle" id="result">
+            <div class="r-idle">
+              <span class="r-ic muted"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></span>
+              <b>النتيجة تظهر هنا</b>
+              <p>بعد التحليل يظهر مكان البؤر ونسبة التأكد</p>
+            </div>
+            <div class="r-busy">
+              <ol class="steps" id="steps">
+                <li>إرسال الصورة</li><li>تحسين التباين (CLAHE)</li><li>كشف البؤر بالنموذج</li><li>تجهيز النتيجة</li>
+              </ol>
+            </div>
+            <div class="r-done">
+              <span class="r-ic" id="rIcon"></span>
+              <h3 id="rTitle"></h3>
+              <div class="gauge" id="gauge">
+                <svg viewBox="0 0 120 70"><path d="M10 60a50 50 0 0 1 100 0" class="g-bg"/><path d="M10 60a50 50 0 0 1 100 0" class="g-fg" id="gFg"/></svg>
+                <b id="rConf"></b><small>نسبة التأكد</small>
+              </div>
+              <div class="r-stats"><div><b id="rLesions">0</b><small>بؤر</small></div><div><b id="rTime">0</b><small>ثانية</small></div></div>
+              <p class="r-note" id="rNote"></p>
+            </div>
+          </div>
+        </aside>
+      </div>
+      <p class="disclaimer">أداة مساعدة لدعم قرار الطبيب، ولا تغني عن التشخيص الطبي المختص.</p>
+    </div>
+  </section>
+
+  <!-- ============ السجل ============ -->
+  <section class="sec" id="history">
+    <div class="wrap">
+      <div class="head row">
+        <div><span class="kicker">السجل</span><h2>الفحوصات السابقة</h2></div>
+        <div class="h-stats">
+          <div><b id="sTotal">0</b><small>فحص</small></div>
+          <div class="bad"><b id="sInf">0</b><small>مؤشرات إصابة</small></div>
+          <div class="good"><b id="sOk">0</b><small>سليم</small></div>
+        </div>
+      </div>
+      <div class="grid" id="historyGrid"></div>
+      <div class="empty" id="historyEmpty" hidden>
+        <span class="r-ic muted"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/></svg></span>
+        <b>لا توجد فحوصات بعد</b><p>أول فحص تسويه بيظهر هنا</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <span class="brand small"><span class="logo"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M5 12h3l2-4 3 8 2-4h4"/></svg></span><span>MS <b>SmartScan</b></span></span>
+    <span>نظام ذكي للكشف المبكر عن التصلب اللويحي المتعدد</span>
+  </div>
+</footer>
+
+<!-- عرض الفحص بحجم كبير -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <button class="x" data-close aria-label="إغلاق"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="m-img"><img id="mImg" alt=""></div>
+    <div class="m-info">
+      <span class="tag" id="mTag"></span>
+      <h3 id="mName"></h3>
+      <dl>
+        <div><dt>نسبة التأكد</dt><dd id="mConf"></dd></div>
+        <div><dt>عدد البؤر</dt><dd id="mLes"></dd></div>
+        <div><dt>التاريخ</dt><dd id="mDate"></dd></div>
+        <div><dt>زمن التحليل</dt><dd id="mTime"></dd></div>
+      </dl>
+      <div class="m-toggle"><button class="on" data-v="annotated">مع تحديد البؤر</button><button data-v="image">الصورة المحسّنة</button></div>
+      <button class="btn btn-danger" id="mDelete">حذف الفحص</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
