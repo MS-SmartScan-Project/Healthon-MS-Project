@@ -41,8 +41,12 @@ CSRF_TOKEN = secrets.token_urlsafe(32)
 RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_REQUESTS = 30
 INFERENCE_VERSION = "yolo11n-clahe-tta-v2"
+MEDICAL_NUMBER_RE = re.compile(r"[A-Z0-9][A-Z0-9\-_/.]{0,29}")
 _request_times = defaultdict(deque)
 _rate_lock = threading.Lock()
+_record_lock = threading.Lock()   # يمنع تسجيل نفس الصورة لمريضين في نفس اللحظة
+
+mimetypes.add_type("image/webp", ".webp")   # إصدارات بايثون القديمة على Raspberry Pi لا تعرفه
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(BASE, "static")
@@ -81,6 +85,10 @@ with db() as con:
         con.execute("ALTER TABLE scans ADD COLUMN source_sha256 TEXT")
     if "inference_version" not in existing_columns:
         con.execute("ALTER TABLE scans ADD COLUMN inference_version TEXT")
+    if "pixel_sha256" not in existing_columns:          # بصمة البكسلات لكشف تكرار نفس صورة الرنين
+        con.execute("ALTER TABLE scans ADD COLUMN pixel_sha256 TEXT")
+    con.execute("CREATE INDEX IF NOT EXISTS idx_scans_source_sha256 ON scans(source_sha256)")
+    con.execute("CREATE INDEX IF NOT EXISTS idx_scans_pixel_sha256 ON scans(pixel_sha256)")
     con.execute("""CREATE TABLE IF NOT EXISTS audit_log (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         created_at  TEXT NOT NULL,
@@ -88,6 +96,57 @@ with db() as con:
         target_id   TEXT,
         outcome     TEXT NOT NULL
     )""")
+    # المرضى: الرقم الطبي هو المعرّف الفريد للمريض
+    con.execute("""CREATE TABLE IF NOT EXISTS patients (
+        medical_number  TEXT PRIMARY KEY,
+        name            TEXT NOT NULL,
+        created_at      TEXT NOT NULL
+    )""")
+
+
+def normalize_medical_number(value):
+    return re.sub(r"\s+", "", value).upper() if isinstance(value, str) else ""
+
+
+def normalize_name(value):
+    return re.sub(r"\s+", " ", value).strip() if isinstance(value, str) else ""
+
+
+def pixel_fingerprint(image):
+    """SHA-256 of the decoded pixels, so re-encoded copies of the same MRI still match."""
+    return hashlib.sha256(f"{image.shape}|{image.dtype}|".encode() + image.tobytes()).hexdigest()
+
+
+def migrate_existing_records():
+    """Fill new fields for old rows without changing or deleting any existing data."""
+    with db() as con:
+        # 1) سجلات المرضى من الفحوصات السابقة (الأحدث أولاً، ولا يُستبدل أي مريض موجود)
+        rows = con.execute("""SELECT patient_id, patient, created_at FROM scans
+                              WHERE patient_id IS NOT NULL AND patient IS NOT NULL
+                              ORDER BY created_at DESC""").fetchall()
+        for r in rows:
+            number, name = normalize_medical_number(r["patient_id"]), normalize_name(r["patient"])
+            if number and name:
+                con.execute("INSERT OR IGNORE INTO patients (medical_number, name, created_at) VALUES (?, ?, ?)",
+                            (number, name, r["created_at"]))
+        # 2) بصمة البكسلات للفحوصات القديمة من الصورة الأصلية المحفوظة
+        missing = con.execute("SELECT id FROM scans WHERE pixel_sha256 IS NULL").fetchall()
+    for r in missing:
+        path = os.path.join(IMAGES, r["id"] + "_original.png")
+        image = cv2.imread(path, cv2.IMREAD_UNCHANGED) if os.path.isfile(path) else None
+        if image is None:
+            continue
+        with db() as con:
+            con.execute("UPDATE scans SET pixel_sha256 = ? WHERE id = ? AND pixel_sha256 IS NULL",
+                        (pixel_fingerprint(image), r["id"]))
+
+
+def find_duplicate(con, source_sha256, pixel_sha256, medical_number):
+    """Return an existing scan of the same image that belongs to a different patient."""
+    return con.execute("""SELECT id, created_at FROM scans
+        WHERE (source_sha256 = ? OR pixel_sha256 = ?)
+          AND (patient_id IS NULL OR UPPER(REPLACE(patient_id, ' ', '')) <> ?)
+        LIMIT 1""", (source_sha256, pixel_sha256, medical_number)).fetchone()
 
 
 def backup_database():
@@ -122,6 +181,7 @@ def audit(action, target_id=None, outcome="ok"):
 
 
 backup_database()
+migrate_existing_records()
 
 
 def row_to_dict(r):
@@ -242,33 +302,49 @@ class Handler(BaseHTTPRequestHandler):
                                    "csrf_token": CSRF_TOKEN})
         if path == "/api/history":
             with db() as con:
-                rows = con.execute("SELECT * FROM scans ORDER BY created_at DESC LIMIT 60").fetchall()
+                rows = con.execute("SELECT * FROM scans ORDER BY created_at DESC LIMIT 200").fetchall()
                 stats = con.execute("""SELECT COUNT(*) total,
                     SUM(result='Infected') infected,
                     SUM(result='Healthy') healthy,
-                    SUM(result='Uncertain') uncertain FROM scans""").fetchone()
-            return self.send_json({"items": [row_to_dict(r) for r in rows],
-                                   "stats": {k: stats[k] or 0 for k in ("total", "infected", "healthy", "uncertain")}})
+                    SUM(result='Uncertain') uncertain,
+                    AVG(seconds) avg_seconds FROM scans""").fetchone()
+                patients = con.execute("SELECT COUNT(*) FROM patients").fetchone()[0]
+                daily = con.execute("""SELECT substr(created_at, 1, 10) day, COUNT(*) scans,
+                    SUM(result='Infected') infected FROM scans
+                    WHERE created_at >= date('now', 'localtime', '-13 days')
+                    GROUP BY day ORDER BY day""").fetchall()
+            summary = {k: stats[k] or 0 for k in ("total", "infected", "healthy", "uncertain")}
+            summary["patients"] = patients
+            summary["avg_seconds"] = round(stats["avg_seconds"], 2) if stats["avg_seconds"] is not None else None
+            return self.send_json({"items": [row_to_dict(r) for r in rows], "stats": summary,
+                                   "daily": [dict(d) for d in daily]})
+        if path == "/api/patients":
+            with db() as con:
+                rows = con.execute("""SELECT p.medical_number, p.name, p.created_at,
+                    COUNT(s.id) scans, MAX(s.created_at) last_scan
+                    FROM patients p LEFT JOIN scans s ON UPPER(REPLACE(s.patient_id, ' ', '')) = p.medical_number
+                    GROUP BY p.medical_number ORDER BY last_scan DESC""").fetchall()
+            return self.send_json({"items": [dict(r) for r in rows]})
         self.send_error(404)
 
     # ---- POST: تحليل صورة ----
     def do_POST(self):
         if not self.request_allowed():
-            return self.send_json({"error": "غير مسموح"}, 403)
+            return self.send_json({"error": "Request not allowed."}, 403)
         if self.rate_limited():
-            return self.send_json({"error": "طلبات كثيرة؛ حاولي بعد دقيقة"}, 429)
+            return self.send_json({"error": "Too many requests. Please wait a minute and try again."}, 429)
         if not self.csrf_valid():
-            return self.send_json({"error": "تعذر التحقق من الطلب"}, 403)
+            return self.send_json({"error": "Request could not be verified. Please reload the page."}, 403)
         if urlparse(self.path).path != "/api/analyze":
             return self.send_error(404)
         if self.headers.get_content_type() != "application/json":
-            return self.send_json({"error": "نوع الطلب غير مدعوم"}, 415)
+            return self.send_json({"error": "Unsupported request type."}, 415)
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
-            return self.send_json({"error": "طول الطلب غير صالح"}, 400)
+            return self.send_json({"error": "Invalid request length."}, 400)
         if length <= 0 or length > MAX_UPLOAD_MB * 1024 * 1024:
-            return self.send_json({"error": "حجم الصورة غير مناسب"}, 413)
+            return self.send_json({"error": f"Image size is not supported (maximum {MAX_UPLOAD_MB} MB)."}, 413)
         try:
             payload = json.loads(self.rfile.read(length))
             if not isinstance(payload, dict):
@@ -278,20 +354,58 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("image must be a string")
             m = re.fullmatch(r"data:image/(png|jpe?g|webp|bmp);base64,([A-Za-z0-9+/=\r\n]+)", image_value)
             if not m:
-                return self.send_json({"error": "لم تصل صورة صالحة"}, 422)
+                return self.send_json({"error": "No valid MRI image was received."}, 422)
             raw = base64.b64decode(m.group(2), validate=True)
         except (ValueError, TypeError, json.JSONDecodeError, Base64Error):
-            return self.send_json({"error": "بيانات غير صالحة"}, 400)
+            return self.send_json({"error": "Invalid request data."}, 400)
+
+        # بيانات المريض إلزامية: الاسم والرقم الطبي
+        patient = normalize_name(payload.get("patient"))[:80]
+        patient_id = normalize_medical_number(payload.get("patient_id"))
+        fields = {}
+        if not patient:
+            fields["patient"] = "Patient name is required."
+        if not patient_id:
+            fields["patient_id"] = "Medical number is required."
+        elif not MEDICAL_NUMBER_RE.fullmatch(patient_id):
+            fields["patient_id"] = "Use letters, digits, - _ / . only (maximum 30 characters)."
+        if fields:
+            return self.send_json({"error": "Required patient information is missing.",
+                                   "code": "validation", "fields": fields}, 422)
 
         if not detector.status()["ready"]:
-            return self.send_json({"error": "النموذج لسه يتحمّل أو فيه مكتبة ناقصة — راجعي الطرفية"}, 503)
+            return self.send_json({"error": "The AI model is still loading. Please wait a moment and try again."}, 503)
 
         image = cv2.imdecode(np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
         if image is None or image.ndim not in (2, 3):
-            return self.send_json({"error": "ملف الصورة غير صالح"}, 422)
+            return self.send_json({"error": "The image file could not be read."}, 422)
         height, width = image.shape[:2]
         if width < 32 or height < 32 or width * height > MAX_IMAGE_PIXELS:
-            return self.send_json({"error": "أبعاد الصورة غير مسموحة"}, 422)
+            return self.send_json({"error": "Image dimensions are not supported."}, 422)
+
+        source_sha256 = hashlib.sha256(raw).hexdigest()
+        pixel_sha256 = pixel_fingerprint(image)
+
+        def conflict():
+            """Duplicate image or medical number registered to a different name → error response, else None."""
+            with db() as con:
+                if find_duplicate(con, source_sha256, pixel_sha256, patient_id):
+                    audit("analyze", None, "duplicate-rejected")
+                    return {"error": "This MRI image has already been associated with an existing patient "
+                                     "record and cannot be uploaded again.",
+                            "code": "duplicate_image", "title": "Duplicate MRI detected"}
+                known = con.execute("SELECT name FROM patients WHERE medical_number = ?", (patient_id,)).fetchone()
+            if known and known["name"].casefold() != patient.casefold():
+                audit("analyze", None, "patient-mismatch-rejected")
+                return {"error": "This medical number is already registered to a different patient name. "
+                                 "Check the medical number or use the registered name.",
+                        "code": "patient_mismatch", "fields": {"patient_id": "Medical number belongs to another patient."}}
+            return None
+
+        # فحص التكرار قبل تشغيل النموذج (لا حاجة لتحليل صورة مرفوضة)
+        rejected = conflict()
+        if rejected:
+            return self.send_json(rejected, 409)
 
         scan_id = datetime.now().strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex
         original_path = os.path.join(IMAGES, scan_id + "_original.png")
@@ -299,7 +413,7 @@ class Handler(BaseHTTPRequestHandler):
         ann_path = os.path.join(IMAGES, scan_id + "_boxes.png")
         if not cv2.imwrite(original_path, image):
             audit("analyze", scan_id, "image-save-failed")
-            return self.send_json({"error": "تعذر حفظ الصورة"}, 500)
+            return self.send_json({"error": "The image could not be saved."}, 500)
 
         t0 = time.time()
         try:
@@ -310,7 +424,7 @@ class Handler(BaseHTTPRequestHandler):
                     os.remove(p)
             sys.stderr.write(f"Analysis failed for {scan_id}: {e}\n")
             audit("analyze", scan_id, "analysis-failed")
-            return self.send_json({"error": "تعذّر تحليل الصورة"}, 500)
+            return self.send_json({"error": "The image could not be analyzed."}, 500)
         seconds = round(time.time() - t0, 2)
 
         result = out["result"]
@@ -318,11 +432,6 @@ class Handler(BaseHTTPRequestHandler):
         uncertain = result == "Infected" and conf is not None and conf < MIN_CONFIDENCE
         if uncertain:
             result = "Uncertain"
-
-        patient = payload.get("patient")
-        patient_id = payload.get("patient_id")
-        patient = patient.strip()[:80] or None if isinstance(patient, str) else None
-        patient_id = patient_id.strip()[:30] or None if isinstance(patient_id, str) else None
 
         rec = {
             "id": scan_id,
@@ -335,23 +444,39 @@ class Handler(BaseHTTPRequestHandler):
             "lesions": len(out["boxes"]),
             "boxes": json.dumps(out["boxes"]),
             "seconds": seconds,
-            "source_sha256": hashlib.sha256(raw).hexdigest(),
+            "source_sha256": source_sha256,
+            "pixel_sha256": pixel_sha256,
             "inference_version": INFERENCE_VERSION,
         }
-        try:
-            with db() as con:
-                con.execute("""INSERT INTO scans
-                    (id, created_at, patient, patient_id, result, confidence, raw_result, lesions, boxes, seconds,
-                     source_sha256, inference_version)
-                    VALUES (:id,:created_at,:patient,:patient_id,:result,:confidence,:raw_result,:lesions,:boxes,:seconds,
-                            :source_sha256,:inference_version)""", rec)
-        except sqlite3.Error as error:
+
+        def discard_files():
             for path in (original_path, img_path, ann_path):
                 if os.path.exists(path):
                     os.remove(path)
+
+        try:
+            with _record_lock:
+                # إعادة الفحص قبل الحفظ مباشرة: ربما سُجّلت نفس الصورة أثناء التحليل
+                rejected = conflict()
+                if rejected:
+                    discard_files()
+                    return self.send_json(rejected, 409)
+                with db() as con:
+                    con.execute("INSERT OR IGNORE INTO patients (medical_number, name, created_at) VALUES (?, ?, ?)",
+                                (patient_id, patient, rec["created_at"]))
+                    # الاسم المسجّل للمريض (نفس الاسم بحروف مختلفة الحجم يُحفظ بصيغته الأصلية)
+                    rec["patient"] = con.execute("SELECT name FROM patients WHERE medical_number = ?",
+                                                 (patient_id,)).fetchone()["name"]
+                    con.execute("""INSERT INTO scans
+                        (id, created_at, patient, patient_id, result, confidence, raw_result, lesions, boxes, seconds,
+                         source_sha256, inference_version, pixel_sha256)
+                        VALUES (:id,:created_at,:patient,:patient_id,:result,:confidence,:raw_result,:lesions,:boxes,
+                                :seconds,:source_sha256,:inference_version,:pixel_sha256)""", rec)
+        except sqlite3.Error as error:
+            discard_files()
             sys.stderr.write(f"Database write failed for {scan_id}: {error}\n")
             audit("analyze", scan_id, "database-failed")
-            return self.send_json({"error": "تعذر حفظ نتيجة الفحص"}, 500)
+            return self.send_json({"error": "The scan result could not be saved."}, 500)
         audit("analyze", scan_id, result)
         data = row_to_dict(rec)
         data["uncertain"] = uncertain
@@ -360,11 +485,11 @@ class Handler(BaseHTTPRequestHandler):
     # ---- DELETE: حذف فحص ----
     def do_DELETE(self):
         if not self.request_allowed():
-            return self.send_json({"error": "غير مسموح"}, 403)
+            return self.send_json({"error": "Request not allowed."}, 403)
         if self.rate_limited():
-            return self.send_json({"error": "طلبات كثيرة؛ حاولي بعد دقيقة"}, 429)
+            return self.send_json({"error": "Too many requests. Please wait a minute and try again."}, 429)
         if not self.csrf_valid():
-            return self.send_json({"error": "تعذر التحقق من الطلب"}, 403)
+            return self.send_json({"error": "Request could not be verified. Please reload the page."}, 403)
         m = re.match(r"^/api/history/([\w-]+)$", urlparse(self.path).path)
         if not m:
             return self.send_error(404)
@@ -372,7 +497,7 @@ class Handler(BaseHTTPRequestHandler):
         with db() as con:
             cursor = con.execute("DELETE FROM scans WHERE id = ?", (sid,))
         if cursor.rowcount == 0:
-            return self.send_json({"error": "الفحص غير موجود"}, 404)
+            return self.send_json({"error": "Scan not found."}, 404)
         for suffix in (".png", "_boxes.png", "_original.png"):
             p = os.path.join(IMAGES, sid + suffix)
             if os.path.exists(p):

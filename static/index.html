@@ -1,251 +1,459 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MS SmartScan · الكشف المبكر عن التصلب المتعدد</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%233b82f6'/%3E%3Ccircle cx='12' cy='12' r='6' fill='none' stroke='white' stroke-width='2'/%3E%3Ccircle cx='14' cy='10.5' r='1.6' fill='white'/%3E%3C/svg%3E">
+<title>MS SmartScan · AI-Assisted MS Lesion Screening</title>
+<meta name="description" content="Doctor-facing AI decision support for detecting MS-related lesions on MRI images. Runs fully on-device.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230A1630'/%3E%3Cpath d='M16 7.5c-1-1-2.4-1.5-4-1.5-3 0-5 1.7-5 4 0 4.6 10 3 10 7.2C17 19 15 20 12 20c-1.9 0-3.4-.5-4.5-1.5' fill='none' stroke='%2338BDF8' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<!-- رسم توضيحي لمقطع رنين (يُستخدم في الواجهة فقط) -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <radialGradient id="tissue" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#c9d4e3"/><stop offset=".55" stop-color="#8a9bb3"/><stop offset="1" stop-color="#435069"/></radialGradient>
-    <radialGradient id="lesion" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff"/><stop offset=".6" stop-color="#eef6ff" stop-opacity=".9"/><stop offset="1" stop-color="#eef6ff" stop-opacity="0"/></radialGradient>
-    <symbol id="brain" viewBox="0 0 200 240">
-      <ellipse cx="100" cy="120" rx="92" ry="112" fill="#0b1220" stroke="#64748b" stroke-width="5"/>
-      <ellipse cx="100" cy="120" rx="80" ry="100" fill="url(#tissue)"/>
-      <g fill="none" stroke="#2b3647" stroke-width="2.2" stroke-linecap="round" opacity=".7">
-        <path d="M100 22v196M40 60c10 8 18 6 26 14s4 18 14 22M160 60c-10 8-18 6-26 14s-4 18-14 22M30 110c14 0 16 12 30 10s14-14 26-8M170 110c-14 0-16 12-30 10s-14-14-26-8M36 160c12-6 20 4 30-4s18-4 22 6M164 160c-12-6-20 4-30-4s-18-4-22 6M58 200c8-10 20-6 28-14M142 200c-8-10-20-6-28-14M60 38c6 10 16 10 22 20M140 38c-6 10-16 10-22 20"/>
-      </g>
-      <path d="M92 92c-10 4-22 16-20 34s10 22 16 20 4-14 6-24 2-26-2-30ZM108 92c10 4 22 16 20 34s-10 22-16 20-4-14-6-24-2-26 2-30Z" fill="#1a2231"/>
-      <ellipse cx="70" cy="96" rx="7" ry="5" fill="url(#lesion)"/><ellipse cx="134" cy="138" rx="6" ry="8" fill="url(#lesion)"/><ellipse cx="118" cy="70" rx="5" ry="4" fill="url(#lesion)"/>
-    </symbol>
-  </defs>
-</svg>
-
-<!-- ============ الشريط العلوي ============ -->
-<header class="nav" id="nav">
-  <div class="wrap nav-in">
-    <a href="#top" class="brand">
-      <span class="logo"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M5 12h3l2-4 3 8 2-4h4"/></svg></span>
-      <span>MS <b>SmartScan</b></span>
+<!-- ============ Header ============ -->
+<header class="topbar" id="topbar">
+  <div class="wrap topbar-in">
+    <a href="#top" class="brand" aria-label="MS SmartScan home">
+      <span class="logo-frame"><img src="/static/assets/logo.webp" alt="MS SmartScan logo" width="1070" height="736"></span>
     </a>
-    <nav class="links">
-      <a href="#idea">الفكرة</a>
-      <a href="#scan">الفحص</a>
-      <a href="#history">السجل</a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="#workspace" data-nav="workspace">Workspace</a>
+      <a href="#records" data-nav="records">Patient Records</a>
+      <a href="#technology" data-nav="technology">Technology</a>
     </nav>
-    <span class="model-chip" id="modelChip" data-state="loading"><i></i><span>جاري تحميل النموذج…</span></span>
+    <div class="top-actions">
+      <span class="chip chip-quiet" title="Images and records are processed and stored only on this device">
+        <svg class="ic" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        On-device
+      </span>
+      <span class="model-chip" id="modelChip" data-state="loading" role="status"><i></i><span>Loading AI model…</span></span>
+      <div class="clinician" title="Clinician workstation">
+        <span class="avatar">DR</span>
+        <span class="clinician-text"><b>Clinician</b><small>Neurology · Radiology</small></span>
+      </div>
+    </div>
   </div>
 </header>
 
 <main id="top">
-  <!-- ============ الواجهة ============ -->
+
+  <!-- ============ Hero ============ -->
   <section class="hero">
-    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
     <div class="wrap hero-in">
-      <div class="hero-text">
-        <span class="pill">جهاز ذكي · Raspberry Pi · YOLO11</span>
-        <h1>اكتشاف <span class="grad">التصلب المتعدد</span> من صورة الرنين خلال ثوانٍ</h1>
-        <p class="lead">جهاز يلتقط صورة الرنين المغناطيسي، ويحللها بالذكاء الاصطناعي، ويحدد مكان البؤر ونسبة التأكد — ليكون عيناً ثانية بجانب الطبيب.</p>
-        <div class="cta">
-          <a href="#scan" class="btn btn-main btn-lg">
-            <svg class="ic" viewBox="0 0 24 24"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M3 12h18"/></svg>
-            ابدأ الفحص الآن
+      <div class="hero-copy">
+        <span class="eyebrow"><i></i> AI clinical decision support · Multiple Sclerosis</span>
+        <h1>Screen MRI scans for <span class="accent">MS-related lesions</span> in seconds.</h1>
+        <p class="lead">MS SmartScan gives neurologists and radiologists a second pair of eyes: it enhances the MRI, localizes suspicious lesions with a trained YOLO11 model, and stores every result in the patient's record — entirely on-device.</p>
+        <div class="hero-cta">
+          <a href="#workspace" class="btn btn-primary btn-lg">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M7 12h10"/></svg>
+            Start a new scan
           </a>
-          <a href="#idea" class="btn btn-soft btn-lg">تعرّف على الفكرة</a>
+          <a href="#technology" class="btn btn-ghost-light btn-lg">How it works</a>
         </div>
-        <div class="metrics">
-          <div><b>99.1%</b><span>Precision</span></div>
-          <div><b>97.2%</b><span>Recall</span></div>
-          <div><b>99.2%</b><span>mAP50</span></div>
-          <small>نتائج التحقق المسجّلة داخل النموذج best.pt</small>
-        </div>
+        <dl class="hero-metrics">
+          <div><dt>Precision</dt><dd>99.1<small>%</small></dd></div>
+          <div><dt>Recall</dt><dd>97.2<small>%</small></dd></div>
+          <div><dt>mAP50</dt><dd>99.2<small>%</small></dd></div>
+          <div><dt>Avg. analysis</dt><dd id="heroAvg">—</dd></div>
+        </dl>
+        <p class="hero-foot">Validation-set metrics recorded in the model file (best.pt). Analysis time is measured live on this device.</p>
       </div>
-
-      <div class="hero-visual">
-        <div class="device">
-          <div class="device-top"><span class="dots"><i></i><i></i><i></i></span><span>MRI · FLAIR</span><span class="live"><i></i> تحليل</span></div>
-          <div class="mri">
-            <svg viewBox="0 0 200 240"><use href="#brain"/></svg>
-            <div class="sweep"></div>
-            <span class="box k1"></span><span class="box k2"></span><span class="box k3"></span>
-          </div>
-          <div class="device-foot"><span class="tag bad">تم اكتشاف بؤر</span><small>رسم توضيحي</small></div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="logo-stage">
+          <img src="/static/assets/logo.webp" alt="" width="1070" height="736">
         </div>
+        <div class="float-card fc-1"><span class="dot dot-cyan"></span><div><b>CLAHE enhancement</b><small>Contrast-normalized input</small></div></div>
+        <div class="float-card fc-2"><span class="dot dot-violet"></span><div><b>Lesion localization</b><small>YOLO11n · on-device</small></div></div>
       </div>
     </div>
   </section>
 
-  <!-- ============ الفكرة ============ -->
-  <section class="sec" id="idea">
+  <!-- ============ Workspace ============ -->
+  <section class="section" id="workspace">
     <div class="wrap">
-      <div class="head"><span class="kicker">الفكرة</span><h2>لماذا MS SmartScan؟</h2></div>
-      <div class="cards3">
-        <article class="card c-problem">
-          <span class="c-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-          <h3>المشكلة</h3>
-          <p>قراءة صور الرنين يدوياً تأخذ وقتاً، وقد تفوت بؤر صغيرة مع ضغط العمل، ونقص الأطباء المختصين يؤخر التشخيص.</p>
-        </article>
-        <article class="card c-solution">
-          <span class="c-ic"><svg viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 3 3 3 3 0 0 0 3-3V7a3 3 0 0 0-3-3ZM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-3 3 3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Z"/></svg></span>
-          <h3>الحل</h3>
-          <p>نموذج ذكاء اصطناعي مدرَّب على صور الرنين يكشف بؤر التصلب ويحدد مكانها ونسبة التأكد خلال ثوانٍ.</p>
-        </article>
-        <article class="card c-device">
-          <span class="c-ic"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg></span>
-          <h3>الجهاز</h3>
-          <p>يعمل على Raspberry Pi مع كاميرا وشاشة، والتحليل كله داخل الجهاز بدون إنترنت، فتبقى صور المرضى في المنشأة.</p>
-        </article>
+      <div class="section-head">
+        <div>
+          <span class="kicker">Clinical workspace</span>
+          <h2>New MRI screening</h2>
+          <p>Register the patient, add the MRI image, and run the AI analysis. The result is saved to the patient's record automatically.</p>
+        </div>
+        <div class="notice" id="notice" hidden>
+          <svg class="ic" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+          <p><b>For qualified clinicians.</b> Results are AI decision support, not a diagnosis. Patient data never leaves this device.</p>
+          <button class="btn btn-sm btn-soft" id="noticeOk" type="button">Acknowledge</button>
+        </div>
       </div>
 
-      <ol class="flow">
-        <li><span>1</span><b>التقاط الصورة</b><small>كاميرا الجهاز أو رفع ملف</small></li>
-        <li><span>2</span><b>تحسين التباين</b><small>خوارزمية CLAHE</small></li>
-        <li><span>3</span><b>كشف البؤر</b><small>نموذج YOLO11 · best.pt</small></li>
-        <li><span>4</span><b>النتيجة</b><small>مكان البؤر + نسبة التأكد</small></li>
+      <ol class="stepper" id="stepper" aria-label="Workflow progress">
+        <li data-step="patient"><span class="s-num">1</span><span class="s-txt"><b>Patient</b><small>Name &amp; medical number</small></span></li>
+        <li data-step="mri"><span class="s-num">2</span><span class="s-txt"><b>MRI image</b><small>Upload or capture</small></span></li>
+        <li data-step="analysis"><span class="s-num">3</span><span class="s-txt"><b>AI analysis</b><small>CLAHE + YOLO11n</small></span></li>
+        <li data-step="finding"><span class="s-num">4</span><span class="s-txt"><b>Finding</b><small>Result &amp; next step</small></span></li>
+        <li data-step="record"><span class="s-num">5</span><span class="s-txt"><b>Record</b><small>Saved to registry</small></span></li>
       </ol>
-    </div>
-  </section>
 
-  <!-- ============ الفحص ============ -->
-  <section class="sec sec-tint" id="scan">
-    <div class="wrap">
-      <div class="head"><span class="kicker">الفحص</span><h2>جرّب الفحص الذكي</h2><p>التقط صورة الرنين بالكاميرا أو ارفعها من جهازك، ثم اضغط «تحليل».</p></div>
+      <div class="ws-grid">
+        <!-- Left: inputs -->
+        <div class="ws-col ws-inputs">
+          <form class="card" id="patientForm" novalidate autocomplete="off">
+            <div class="card-head">
+              <h3><span class="num">1</span> Patient information</h3>
+              <span class="req-badge">Required</span>
+            </div>
+            <label class="field" id="fName">
+              <span class="field-label">Patient name <em>*</em></span>
+              <input id="patient" name="patient" maxlength="80" placeholder="Full name" required aria-describedby="patientErr">
+              <span class="field-err" id="patientErr" role="alert"></span>
+            </label>
+            <label class="field" id="fId">
+              <span class="field-label">Medical number <em>*</em> <small>Unique patient identifier</small></span>
+              <input id="patientId" name="patient_id" maxlength="30" placeholder="e.g. MRN-10024" required aria-describedby="patientIdErr" spellcheck="false">
+              <span class="field-err" id="patientIdErr" role="alert"></span>
+            </label>
+            <div class="patient-hint" id="patientHint" hidden></div>
+          </form>
 
-      <div class="studio">
-        <!-- العارض -->
-        <div class="panel viewer-panel">
-          <div class="tabs" role="tablist">
-            <button class="tab on" data-mode="camera" role="tab">
-              <svg class="ic" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.5" r="3.5"/></svg> الكاميرا
-            </button>
-            <button class="tab" data-mode="upload" role="tab">
-              <svg class="ic" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg> رفع صورة
-            </button>
-          </div>
-
-          <div class="viewer" id="viewer">
-            <video id="video" autoplay playsinline muted></video>
-            <img id="preview" alt="" hidden>
-            <div class="frame"><i></i><i></i><i></i><i></i></div>
-            <div class="sweep" id="sweep" hidden></div>
-
-            <div class="overlay" id="camGate">
-              <span class="o-ic"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.5" r="3.5"/></svg></span>
-              <b>شغّل الكاميرا</b>
-              <p>وجّهها على صورة الرنين داخل الإطار</p>
-              <button class="btn btn-main" id="startCam">تشغيل الكاميرا</button>
-              <small class="err" id="camErr"></small>
+          <div class="card" id="sourceCard">
+            <div class="card-head">
+              <h3><span class="num">2</span> MRI image</h3>
+              <div class="seg" role="tablist" aria-label="Image source">
+                <button class="seg-btn on" type="button" data-mode="upload" role="tab" aria-selected="true">
+                  <svg class="ic" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg> Upload
+                </button>
+                <button class="seg-btn" type="button" data-mode="camera" role="tab" aria-selected="false">
+                  <svg class="ic" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.5" r="3.5"/></svg> Camera
+                </button>
+              </div>
             </div>
 
-            <label class="overlay drop" id="dropZone" hidden>
-              <input type="file" id="fileInput" accept="image/*" hidden>
-              <span class="o-ic"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg></span>
-              <b>اسحب صورة الرنين هنا</b>
-              <p>أو اضغط لاختيار ملف (PNG / JPG)</p>
-              <span class="btn btn-main">اختيار صورة</span>
+            <label class="dropzone" id="dropZone">
+              <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp,image/bmp" hidden>
+              <span class="dz-ic"><svg viewBox="0 0 24 24"><path d="M7 18a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9"/><path d="M12 12v8M9 15l3-3 3 3"/></svg></span>
+              <b>Drop the MRI image here</b>
+              <span>or <u>browse files</u> · PNG, JPG, WebP, BMP · up to 10 MB</span>
             </label>
+
+            <div class="camera-panel" id="cameraPanel" hidden>
+              <p>Point the Raspberry Pi camera at the MRI film or screen, keep it steady, and use even backlighting.</p>
+              <div class="camera-actions">
+                <button class="btn btn-soft" type="button" id="startCam">
+                  <svg class="ic" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.5" r="3.5"/></svg>
+                  <span>Start camera</span>
+                </button>
+                <select id="camSelect" hidden aria-label="Select camera"></select>
+              </div>
+            </div>
+
+            <div class="file-chip" id="fileChip" hidden>
+              <span class="fc-thumb"><img id="fileThumb" alt=""></span>
+              <span class="fc-meta"><b id="fileName"></b><small id="fileInfo"></small></span>
+              <button class="icon-btn" type="button" id="clearImage" aria-label="Remove image" title="Remove image">
+                <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+              </button>
+            </div>
+            <p class="field-err block" id="imageErr" role="alert"></p>
           </div>
 
-          <div class="viewer-bar">
-            <select id="camSelect" hidden aria-label="اختيار الكاميرا"></select>
-            <button class="btn btn-soft" id="resetBtn" hidden>صورة جديدة</button>
-            <button class="btn btn-main btn-lg" id="analyzeBtn" disabled>
-              <svg class="ic" viewBox="0 0 24 24"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M3 12h18"/></svg>
-              <span>التقاط وتحليل</span>
-            </button>
+          <button class="btn btn-primary btn-xl" id="analyzeBtn" type="button">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>
+            <span class="spin" aria-hidden="true"></span>
+            <span class="btn-label">Run AI analysis</span>
+          </button>
+          <div class="after-actions" id="afterActions" hidden>
+            <button class="btn btn-soft" type="button" id="newImageBtn">New image · same patient</button>
+            <button class="btn btn-soft" type="button" id="newPatientBtn">New patient</button>
+          </div>
+          <p class="req-note">All three are required: patient name, medical number, and MRI image.</p>
+        </div>
+
+        <!-- Center: MRI viewer -->
+        <div class="ws-col ws-viewer">
+          <div class="viewer-card">
+            <div class="viewer-head">
+              <div class="vh-left">
+                <span class="vh-title">MRI Viewer</span>
+                <span class="vh-patient" id="vhPatient">No patient selected</span>
+              </div>
+              <span class="status-pill" id="scanStatus" data-tone="idle">Awaiting image</span>
+            </div>
+
+            <div class="viewer-stage" id="stage">
+              <div class="stage-inner" id="stageInner">
+                <video id="video" autoplay playsinline muted hidden></video>
+                <img id="preview" alt="MRI image" hidden draggable="false">
+              </div>
+              <div class="stage-empty" id="stageEmpty">
+                <svg viewBox="0 0 120 120" aria-hidden="true"><ellipse cx="60" cy="62" rx="40" ry="48" /><path d="M60 16v92M34 40c6 5 12 4 16 9M86 40c-6 5-12 4-16 9M28 66c9 0 11 7 19 6M92 66c-9 0-11 7-19 6M36 90c7-5 12 1 18-3M84 90c-7-5-12 1-18-3"/></svg>
+                <b>No MRI loaded</b>
+                <span>Upload an image or start the camera to begin.</span>
+              </div>
+              <div class="frame-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+              <div class="scanline" id="scanline" hidden></div>
+              <div class="busy-overlay" id="busyOverlay" hidden>
+                <div class="busy-card">
+                  <span class="ring"></span>
+                  <b>Analyzing MRI…</b>
+                  <small>AI-assisted screening in progress · <span id="elapsed">0.0</span>s</small>
+                </div>
+              </div>
+              <span class="stage-tag" id="stageTag" hidden></span>
+            </div>
+
+            <div class="viewer-toolbar">
+              <div class="seg seg-dark" id="viewToggle" role="group" aria-label="Image layer">
+                <button type="button" class="seg-btn on" data-view="annotated" disabled>AI overlay</button>
+                <button type="button" class="seg-btn" data-view="image" disabled>Enhanced</button>
+                <button type="button" class="seg-btn" data-view="original" disabled>Original</button>
+              </div>
+              <div class="zoom" role="group" aria-label="Zoom">
+                <button type="button" class="icon-btn dark" id="zoomOut" aria-label="Zoom out"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+                <span id="zoomLevel">100%</span>
+                <button type="button" class="icon-btn dark" id="zoomIn" aria-label="Zoom in"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+                <button type="button" class="icon-btn dark" id="zoomFit" aria-label="Fit to view" title="Fit"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+              </div>
+            </div>
+
+            <dl class="viewer-meta">
+              <div><dt>Patient</dt><dd id="mPatient">—</dd></div>
+              <div><dt>Medical no.</dt><dd id="mNumber">—</dd></div>
+              <div><dt>Scan status</dt><dd id="mScan">No image</dd></div>
+              <div><dt>Analysis</dt><dd id="mAnalysis">Not started</dd></div>
+              <div><dt>AI result</dt><dd id="mResult">—</dd></div>
+              <div><dt>AI confidence</dt><dd id="mConfidence">—</dd></div>
+            </dl>
           </div>
         </div>
 
-        <!-- الجانب -->
-        <aside class="side">
-          <div class="panel">
-            <h3 class="p-title">بيانات المريض <small>(اختياري)</small></h3>
-            <div class="fields">
-              <label><span>الاسم</span><input id="patient" maxlength="80" placeholder="مثال: نورة"></label>
-              <label><span>الرقم الطبي</span><input id="patientId" maxlength="30" inputmode="numeric" placeholder="مثال: 1001"></label>
+        <!-- Right: finding -->
+        <div class="ws-col ws-result">
+          <div class="card finding" id="finding" data-state="idle" aria-live="polite">
+            <div class="f-idle">
+              <span class="f-ic muted"><svg viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 3 3 3 3 0 0 0 3-3V7a3 3 0 0 0-3-3ZM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-3 3 3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Z"/></svg></span>
+              <b>AI finding appears here</b>
+              <p>After analysis you will see the finding, the model's confidence, and the recommended next clinical step.</p>
             </div>
-          </div>
 
-          <div class="panel result idle" id="result">
-            <div class="r-idle">
-              <span class="r-ic muted"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></span>
-              <b>النتيجة تظهر هنا</b>
-              <p>بعد التحليل يظهر مكان البؤر ونسبة التأكد</p>
-            </div>
-            <div class="r-busy">
-              <ol class="steps" id="steps">
-                <li>إرسال الصورة</li><li>تحسين التباين (CLAHE)</li><li>كشف البؤر بالنموذج</li><li>تجهيز النتيجة</li>
+            <div class="f-busy">
+              <ol class="progress-steps" id="progressSteps">
+                <li data-p="send"><i></i><span>Image sent securely to local AI engine</span></li>
+                <li data-p="infer"><i></i><span>Enhancement (CLAHE) and YOLO11n inference</span></li>
+                <li data-p="save"><i></i><span>Result saved to patient record</span></li>
               </ol>
             </div>
-            <div class="r-done">
-              <span class="r-ic" id="rIcon"></span>
-              <h3 id="rTitle"></h3>
-              <div class="gauge" id="gauge">
-                <svg viewBox="0 0 120 70"><path d="M10 60a50 50 0 0 1 100 0" class="g-bg"/><path d="M10 60a50 50 0 0 1 100 0" class="g-fg" id="gFg"/></svg>
-                <b id="rConf"></b><small>نسبة التأكد</small>
+
+            <div class="f-done">
+              <span class="f-eyebrow" id="fEyebrow">AI finding</span>
+              <div class="f-title-row">
+                <span class="f-ic" id="fIcon"></span>
+                <h3 id="fTitle"></h3>
               </div>
-              <div class="r-stats"><div><b id="rLesions">0</b><small>بؤر</small></div><div><b id="rTime">0</b><small>ثانية</small></div></div>
-              <p class="r-note" id="rNote"></p>
+              <p class="f-text" id="fText"></p>
+
+              <div class="confidence" id="confBlock">
+                <div class="conf-top"><span>AI confidence</span><b id="fConf">—</b></div>
+                <div class="conf-bar"><i id="fConfBar"></i><span class="conf-mark" id="confMark" title="70% review threshold"></span></div>
+                <small id="fConfNote"></small>
+              </div>
+
+              <dl class="f-stats">
+                <div><dt>Regions flagged</dt><dd id="fRegions">—</dd></div>
+                <div><dt>Analysis time</dt><dd id="fTime">—</dd></div>
+              </dl>
+            </div>
+
+            <p class="disclaimer">AI-assisted screening result. Final diagnosis requires clinical assessment and appropriate diagnostic criteria.</p>
+          </div>
+
+          <div class="card next-step" id="nextStep" hidden>
+            <span class="ns-eyebrow">Next clinical step</span>
+            <p class="ns-lead" id="nsLead">Further clinical evaluation is recommended.</p>
+            <div class="ns-box">
+              <div class="ns-title">
+                <span class="ns-ic"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/><path d="M7.5 15h9"/></svg></span>
+                <b id="nsTitle">Consider CSF analysis</b>
+              </div>
+              <div id="nsMarkers">
+                <span class="ns-sub">Recommended markers</span>
+                <ul class="markers">
+                  <li><b>OCBs</b><span>Oligoclonal Bands</span></li>
+                  <li><b>κ-FLC</b><span>Kappa Free Light Chains</span></li>
+                </ul>
+              </div>
+              <p class="ns-note" id="nsNote">CSF analysis may provide additional evidence to support the diagnostic workup for MS.</p>
             </div>
           </div>
-        </aside>
+
+          <div class="card record-saved" id="recordSaved" hidden>
+            <span class="rs-ic"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5Z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg></span>
+            <div>
+              <b>Saved to patient record</b>
+              <small id="rsInfo"></small>
+            </div>
+            <a href="#records" class="btn btn-sm btn-soft" id="rsView">View</a>
+          </div>
+        </div>
       </div>
-      <p class="disclaimer">أداة مساعدة لدعم قرار الطبيب، ولا تغني عن التشخيص الطبي المختص.</p>
     </div>
   </section>
 
-  <!-- ============ السجل ============ -->
-  <section class="sec" id="history">
+  <!-- ============ Records ============ -->
+  <section class="section section-tint" id="records">
     <div class="wrap">
-      <div class="head row">
-        <div><span class="kicker">السجل</span><h2>الفحوصات السابقة</h2></div>
-        <div class="h-stats">
-          <div><b id="sTotal">0</b><small>فحص</small></div>
-          <div class="bad"><b id="sInf">0</b><small>مؤشرات إصابة</small></div>
-          <div class="warn"><b id="sUncertain">0</b><small>غير حاسم</small></div>
-          <div class="good"><b id="sOk">0</b><small>سليم</small></div>
+      <div class="section-head">
+        <div>
+          <span class="kicker">Patient records</span>
+          <h2>Scan registry</h2>
+          <p>Every analysis is stored locally with the patient's name, medical number, AI finding, and images.</p>
+        </div>
+        <button class="btn btn-soft" type="button" id="exportCsv">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+          Export CSV
+        </button>
+      </div>
+
+      <div class="insights">
+        <div class="kpis">
+          <div class="kpi"><span>Total scans</span><b id="sTotal">0</b></div>
+          <div class="kpi"><span>Patients</span><b id="sPatients">0</b></div>
+          <div class="kpi tone-red"><span>Suspicious lesion</span><b id="sInf">0</b></div>
+          <div class="kpi tone-amber"><span>Low confidence</span><b id="sUncertain">0</b></div>
+          <div class="kpi tone-green"><span>No finding</span><b id="sOk">0</b></div>
+          <div class="kpi"><span>Avg. analysis</span><b id="sAvg">—</b></div>
+        </div>
+        <div class="card activity">
+          <div class="activity-head"><b>Screening activity</b><small>Last 14 days</small></div>
+          <svg id="activityChart" viewBox="0 0 280 90" preserveAspectRatio="none" role="img" aria-label="Scans per day, last 14 days"></svg>
+          <div class="legend"><span><i class="lg-all"></i>Scans</span><span><i class="lg-inf"></i>Suspicious</span></div>
         </div>
       </div>
-      <div class="grid" id="historyGrid"></div>
-      <div class="empty" id="historyEmpty" hidden>
-        <span class="r-ic muted"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/></svg></span>
-        <b>لا توجد فحوصات بعد</b><p>أول فحص تسويه بيظهر هنا</p>
+
+      <div class="card table-card">
+        <div class="table-tools">
+          <label class="search">
+            <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="search" type="search" placeholder="Search by patient name or medical number" aria-label="Search records">
+          </label>
+          <div class="seg" id="filter" role="group" aria-label="Filter by finding">
+            <button type="button" class="seg-btn on" data-filter="all">All</button>
+            <button type="button" class="seg-btn" data-filter="Infected">Suspicious</button>
+            <button type="button" class="seg-btn" data-filter="Uncertain">Low confidence</button>
+            <button type="button" class="seg-btn" data-filter="Healthy">No finding</button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="records">
+            <thead>
+              <tr><th>Patient</th><th>Medical no.</th><th>Date &amp; time</th><th>AI finding</th><th>Confidence</th><th>Regions</th><th><span class="sr">Actions</span></th></tr>
+            </thead>
+            <tbody id="recordsBody"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="recordsEmpty" hidden>
+          <span class="f-ic muted"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/></svg></span>
+          <b id="emptyTitle">No scans recorded yet</b>
+          <p id="emptyText">Completed analyses will appear here with the patient's details.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Technology ============ -->
+  <section class="section" id="technology">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <span class="kicker">Technology</span>
+          <h2>From MRI image to clinical insight</h2>
+          <p>A low-cost Raspberry Pi device that brings AI screening to clinics with limited access to MS specialists.</p>
+        </div>
+      </div>
+
+      <ol class="pipeline">
+        <li><span class="p-num">01</span><b>Capture</b><p>Raspberry Pi Camera Module v2 or direct image upload.</p></li>
+        <li><span class="p-num">02</span><b>Enhance</b><p>Grayscale conversion and CLAHE contrast normalization (OpenCV).</p></li>
+        <li><span class="p-num">03</span><b>Detect</b><p>YOLO11n lesion detector with test-time augmentation, 640 px input.</p></li>
+        <li><span class="p-num">04</span><b>Report</b><p>Finding, confidence, flagged regions, and next clinical step — saved to the record.</p></li>
+      </ol>
+
+      <div class="tech-grid">
+        <article class="card tech model-card">
+          <h3>AI model</h3>
+          <p class="muted-p">YOLO11n fine-tuned on labeled MRI slices (100 epochs, 640 px). Metrics are from the model's validation split.</p>
+          <dl class="model-metrics">
+            <div><dt>Precision</dt><dd>99.1%</dd></div>
+            <div><dt>Recall</dt><dd>97.2%</dd></div>
+            <div><dt>mAP50</dt><dd>99.2%</dd></div>
+            <div><dt>mAP50-95</dt><dd>82.5%</dd></div>
+          </dl>
+          <p class="fine">Validation metrics are not a clinical validation. Prospective evaluation on local clinical data is planned.</p>
+        </article>
+        <article class="card tech">
+          <h3>Device</h3>
+          <ul class="ticks">
+            <li>Raspberry Pi 5 (4 GB) with Camera Module v2 and touch display</li>
+            <li>Runs fully offline — no cloud, no internet required after setup</li>
+            <li>Low-cost, portable hardware suited to clinics and screening centers</li>
+            <li>Same software runs on a Windows workstation</li>
+          </ul>
+        </article>
+        <article class="card tech">
+          <h3>Privacy &amp; safety</h3>
+          <ul class="ticks">
+            <li>Server accepts connections from this device only (localhost)</li>
+            <li>Required patient identifiers; one medical number per patient</li>
+            <li>Duplicate MRI protection via image fingerprints (SHA-256)</li>
+            <li>CSRF protection, rate limiting, and an audit log of every action</li>
+            <li>Automatic daily database backups (last 7 kept)</li>
+          </ul>
+        </article>
       </div>
     </div>
   </section>
 </main>
 
-<footer class="foot">
-  <div class="wrap foot-in">
-    <span class="brand small"><span class="logo"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M5 12h3l2-4 3 8 2-4h4"/></svg></span><span>MS <b>SmartScan</b></span></span>
-    <span>نظام ذكي للكشف المبكر عن التصلب اللويحي المتعدد</span>
+<footer class="footer">
+  <div class="wrap footer-in">
+    <span class="footer-logo"><img src="/static/assets/logo.webp" alt="MS SmartScan logo" width="1070" height="736"></span>
+    <p>AI-assisted MS lesion screening · Technical Digital College for Girls, Riyadh</p>
+    <p class="fine">Clinical decision-support prototype. Not a medical device. Final diagnosis requires clinical assessment and appropriate diagnostic criteria.</p>
   </div>
 </footer>
 
-<!-- عرض الفحص بحجم كبير -->
-<div class="modal" id="modal">
+<!-- Scan detail -->
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="dName">
   <div class="modal-box">
-    <button class="x" data-close aria-label="إغلاق"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-    <div class="m-img"><img id="mImg" alt=""></div>
+    <button class="icon-btn modal-x" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="m-img">
+      <img id="dImg" alt="MRI scan">
+      <div class="seg seg-dark m-toggle" id="dToggle">
+        <button type="button" class="seg-btn on" data-v="annotated">AI overlay</button>
+        <button type="button" class="seg-btn" data-v="image">Enhanced</button>
+        <button type="button" class="seg-btn" data-v="original">Original</button>
+      </div>
+    </div>
     <div class="m-info">
-      <span class="tag" id="mTag"></span>
-      <h3 id="mName"></h3>
+      <span class="badge" id="dBadge"></span>
+      <h3 id="dName"></h3>
+      <span class="m-id" id="dNumber"></span>
       <dl>
-        <div><dt>نسبة التأكد</dt><dd id="mConf"></dd></div>
-        <div><dt>عدد البؤر</dt><dd id="mLes"></dd></div>
-        <div><dt>التاريخ</dt><dd id="mDate"></dd></div>
-        <div><dt>زمن التحليل</dt><dd id="mTime"></dd></div>
+        <div><dt>AI confidence</dt><dd id="dConf"></dd></div>
+        <div><dt>Regions flagged</dt><dd id="dRegions"></dd></div>
+        <div><dt>Scan date</dt><dd id="dDate"></dd></div>
+        <div><dt>Analysis time</dt><dd id="dTime"></dd></div>
+        <div><dt>Scan ID</dt><dd id="dId" class="mono"></dd></div>
+        <div><dt>Model</dt><dd id="dModel"></dd></div>
       </dl>
-      <div class="m-toggle"><button class="on" data-v="annotated">مع تحديد البؤر</button><button data-v="image">الصورة المحسّنة</button></div>
-      <button class="btn btn-danger" id="mDelete">حذف الفحص</button>
+      <p class="m-text" id="dText"></p>
+      <p class="disclaimer">AI-assisted screening result. Final diagnosis requires clinical assessment and appropriate diagnostic criteria.</p>
+      <button class="btn btn-danger" type="button" id="dDelete">Delete scan</button>
     </div>
   </div>
 </div>
+
+<div class="toast" id="toast" role="status" hidden></div>
 
 <script src="/static/app.js"></script>
 </body>
