@@ -4,13 +4,14 @@
   const video = $('video'), preview = $('preview'), sweep = $('sweep');
   const analyzeBtn = $('analyzeBtn'), resetBtn = $('resetBtn'), camSelect = $('camSelect');
   const result = $('result');
-  let mode = 'camera', stream = null, uploaded = null, busy = false, modelReady = false;
+  let mode = 'camera', stream = null, uploaded = null, busy = false, modelReady = false, csrfToken = '';
 
   /* ---------------- حالة النموذج ---------------- */
   async function pollStatus() {
     try {
       const s = await (await fetch('/api/status')).json();
       const chip = $('modelChip');
+      csrfToken = s.csrf_token || '';
       if (s.ready) { chip.dataset.state = 'ready'; chip.lastElementChild.textContent = 'النموذج جاهز'; modelReady = true; refreshButton(); return; }
       if (s.error) { chip.dataset.state = 'error'; chip.lastElementChild.textContent = 'النموذج غير محمّل'; chip.title = s.error; return; }
     } catch (e) { /* السيرفر لسه يشتغل */ }
@@ -22,6 +23,7 @@
     if (busy) return;
     document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x === t));
     mode = t.dataset.mode;
+    if (mode === 'upload') stopCamera();
     reset();
   }));
 
@@ -47,6 +49,12 @@
   }
 
   /* ---------------- الكاميرا ---------------- */
+  function stopCamera() {
+    stream?.getTracks().forEach((track) => track.stop());
+    stream = null;
+    video.srcObject = null;
+  }
+
   async function startCamera(deviceId) {
     $('camErr').textContent = '';
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -60,6 +68,7 @@
         audio: false,
       });
       video.srcObject = stream;
+      await video.play();
       $('camGate').hidden = true;
       const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput');
       if (cams.length > 1 && !camSelect.options.length) {
@@ -82,7 +91,15 @@
   drop.addEventListener('drop', (e) => e.dataTransfer.files[0] && loadFile(e.dataTransfer.files[0]));
 
   function loadFile(file) {
-    if (!file.type.startsWith('image/')) return;
+    const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/bmp'];
+    if (!allowed.includes(file.type)) {
+      showResult({ error: 'صيغة الصورة غير مدعومة. استخدمي PNG أو JPG أو WebP أو BMP.' });
+      return;
+    }
+    if (file.size <= 0 || file.size > 10 * 1024 * 1024) {
+      showResult({ error: 'حجم الصورة يجب ألا يتجاوز 10 ميجابايت.' });
+      return;
+    }
     const img = new Image();
     img.onload = () => {
       uploaded = toDataURL(img, img.naturalWidth, img.naturalHeight);
@@ -90,6 +107,10 @@
       drop.hidden = true; resetBtn.hidden = false;
       setResult('idle'); refreshButton();
       URL.revokeObjectURL(img.src);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src);
+      showResult({ error: 'تعذر قراءة ملف الصورة.' });
     };
     img.src = URL.createObjectURL(file);
     fileInput.value = '';
@@ -125,9 +146,11 @@
     let data;
     try {
       const res = await fetch('/api/analyze', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
         body: JSON.stringify({ image, patient: $('patient').value, patient_id: $('patientId').value }),
       });
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) throw new Error('استجابة غير صالحة من السيرفر');
       data = await res.json();
       if (!res.ok) throw new Error(data.error || 'خطأ غير متوقع');
     } catch (e) {
@@ -155,6 +178,7 @@
   const ICONS = {
     bad: '<svg viewBox="0 0 24 24"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17.5v.01"/></svg>',
     good: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>',
+    warn: '<svg viewBox="0 0 24 24"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17.5v.01"/></svg>',
     err: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>',
   };
 
@@ -168,10 +192,10 @@
       $('rLesions').textContent = '—'; $('rTime').textContent = '—';
       return;
     }
-    const bad = d.result === 'Infected';
-    setResult('done', bad ? 'bad' : 'good');
-    $('rIcon').innerHTML = bad ? ICONS.bad : ICONS.good;
-    $('rTitle').textContent = bad ? 'تم اكتشاف مؤشرات إصابة' : 'لم تُكتشف بؤر';
+    const bad = d.result === 'Infected', uncertain = d.result === 'Uncertain';
+    setResult('done', bad ? 'bad' : uncertain ? 'warn' : 'good');
+    $('rIcon').innerHTML = bad ? ICONS.bad : uncertain ? ICONS.warn : ICONS.good;
+    $('rTitle').textContent = bad ? 'تم اكتشاف مؤشرات إصابة' : uncertain ? 'نتيجة غير حاسمة' : 'لم تُكتشف بؤر';
     $('rLesions').textContent = d.lesions;
     $('rTime').textContent = d.seconds;
     const hasConf = typeof d.confidence === 'number';
@@ -183,7 +207,8 @@
     }
     $('rNote').textContent = bad
       ? 'البؤر محددة بالمربعات على الصورة. يُنصح بمراجعة طبيب الأعصاب لتأكيد النتيجة.'
-      : d.filtered ? 'رُصدت مؤشرات ضعيفة بثقة أقل من 70% فاعتُبرت سليمة.' : 'لم يكتشف النموذج أي بؤر في هذه الصورة.';
+      : uncertain ? 'رصد النموذج مؤشرات منخفضة الثقة؛ لا تُعد النتيجة سليمة أو مصابة دون مراجعة مختص.'
+        : 'لم يكتشف النموذج أي بؤر في هذه الصورة، وهذا لا يُعد تشخيصًا طبيًا.';
   }
 
   /* ---------------- السجل ---------------- */
@@ -193,12 +218,13 @@
       const d = await (await fetch('/api/history')).json();
       items = d.items;
       $('sTotal').textContent = d.stats.total; $('sInf').textContent = d.stats.infected; $('sOk').textContent = d.stats.healthy;
+      if ($('sUncertain')) $('sUncertain').textContent = d.stats.uncertain || 0;
       $('historyEmpty').hidden = items.length > 0;
       $('historyGrid').innerHTML = items.map((s, i) => `
         <button class="item" data-i="${i}">
           <div class="thumb"><img src="${s.annotated}" alt="" loading="lazy"></div>
           <div class="body">
-            <div class="top"><span class="tag ${s.result === 'Infected' ? 'bad' : 'good'}">${s.result === 'Infected' ? 'مؤشرات إصابة' : 'سليم'}</span>
+            <div class="top"><span class="tag ${s.result === 'Infected' ? 'bad' : s.result === 'Uncertain' ? 'warn' : 'good'}">${s.result === 'Infected' ? 'مؤشرات إصابة' : s.result === 'Uncertain' ? 'غير حاسم' : 'سليم'}</span>
               <span class="conf">${s.confidence != null ? s.confidence + '%' : '—'}</span></div>
             <span class="who">${esc(s.patient || 'بدون اسم')}${s.patient_id ? ' · #' + esc(s.patient_id) : ''}</span>
             <small>${fmt(s.created_at)}</small>
@@ -215,9 +241,10 @@
   $('historyGrid').addEventListener('click', (e) => {
     const b = e.target.closest('.item'); if (!b) return;
     current = items[+b.dataset.i];
-    const bad = current.result === 'Infected';
+    const bad = current.result === 'Infected', uncertain = current.result === 'Uncertain';
     $('mImg').src = current.annotated;
-    $('mTag').className = 'tag ' + (bad ? 'bad' : 'good'); $('mTag').textContent = bad ? 'مؤشرات إصابة' : 'سليم';
+    $('mTag').className = 'tag ' + (bad ? 'bad' : uncertain ? 'warn' : 'good');
+    $('mTag').textContent = bad ? 'مؤشرات إصابة' : uncertain ? 'غير حاسم' : 'سليم';
     $('mName').textContent = (current.patient || 'بدون اسم') + (current.patient_id ? ' · #' + current.patient_id : '');
     $('mConf').textContent = current.confidence != null ? current.confidence + '%' : '—';
     $('mLes').textContent = current.lesions;
@@ -235,13 +262,15 @@
   document.addEventListener('keydown', (e) => e.key === 'Escape' && modal.classList.remove('open'));
   $('mDelete').addEventListener('click', async () => {
     if (!current || !confirm('حذف هذا الفحص؟')) return;
-    await fetch('/api/history/' + current.id, { method: 'DELETE' });
-    modal.classList.remove('open'); loadHistory();
+    const response = await fetch('/api/history/' + encodeURIComponent(current.id), { method: 'DELETE', headers: { 'X-CSRF-Token': csrfToken } });
+    if (!response.ok) { alert('تعذر حذف الفحص. حدّثي الصفحة وحاولي مجددًا.'); return; }
+    modal.classList.remove('open'); await loadHistory();
   });
 
   /* ---------------- عام ---------------- */
   const nav = $('nav');
   addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 8), { passive: true });
 
+  addEventListener('beforeunload', stopCamera);
   reset(); pollStatus(); loadHistory();
 })();

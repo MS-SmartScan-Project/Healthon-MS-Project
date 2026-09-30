@@ -47,6 +47,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
 .tag::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .tag.bad { color: #e11d48; background: #ffe4e8; }
 .tag.good { color: #059669; background: #d1fae5; }
+.tag.warn { color: #b45309; background: #fef3c7; }
 .spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .4); border-top-color: #fff; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -188,17 +189,20 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
 .steps li.ok::before { border-color: var(--green); background: var(--green) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 12 4 4 8-8'/%3E%3C/svg%3E") center / 14px no-repeat; }
 .result.bad { border-color: #fecdd6; background: linear-gradient(180deg, #fff, #fff5f7); }
 .result.good { border-color: #a7f3d0; background: linear-gradient(180deg, #fff, #f0fdf8); }
+.result.warn { border-color: #fde68a; background: linear-gradient(180deg, #fff, #fffbeb); }
 .result.bad .r-ic { background: #ffe4e8; color: var(--rose); }
 .result.good .r-ic { background: #d1fae5; color: var(--green); }
+.result.warn .r-ic { background: #fef3c7; color: var(--amber); }
 .result.err .r-ic { background: #fef3c7; color: var(--amber); }
 .r-done h3 { font-size: 1.3rem; }
-.result.bad h3 { color: #e11d48; } .result.good h3 { color: #059669; } .result.err h3 { color: #b45309; }
+.result.bad h3 { color: #e11d48; } .result.good h3 { color: #059669; } .result.warn h3, .result.err h3 { color: #b45309; }
 .gauge { position: relative; width: 180px; display: grid; justify-items: center; }
 .gauge svg { width: 100%; }
 .g-bg, .g-fg { stroke-width: 11; }
 .g-bg { stroke: var(--tint); }
 .g-fg { stroke: var(--blue); stroke-dasharray: 157; stroke-dashoffset: 157; transition: stroke-dashoffset 1.1s cubic-bezier(.2, .8, .2, 1); }
 .result.bad .g-fg { stroke: var(--rose); } .result.good .g-fg { stroke: var(--green); }
+.result.warn .g-fg { stroke: var(--amber); }
 .gauge b { position: absolute; bottom: 16px; font-size: 1.7rem; direction: ltr; }
 .gauge small { color: var(--muted); font-size: .8rem; margin-top: -4px; }
 .r-stats { display: flex; gap: 10px; width: 100%; }
@@ -214,6 +218,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
 .h-stats b { display: block; font-size: 1.4rem; line-height: 1.2; }
 .h-stats small { color: var(--muted); font-size: .8rem; }
 .h-stats .bad b { color: var(--rose); } .h-stats .good b { color: var(--green); }
+.h-stats .warn b { color: var(--amber); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 18px; }
 .item { text-align: start; padding: 0; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--surface); cursor: pointer; transition: .25s; box-shadow: var(--shadow-sm); }
 .item:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
