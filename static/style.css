@@ -46,7 +46,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
 .tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 99px; font-size: .82rem; font-weight: 600; white-space: nowrap; }
 .tag::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .tag.bad { color: #e11d48; background: #ffe4e8; }
-.tag.good { color: #059669; background: #d1fae5; }
+.tag.good { color: #059669; background: #d7fde9; }
 .tag.warn { color: #b45309; background: #fef3c7; }
 .spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .4); border-top-color: #fff; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
