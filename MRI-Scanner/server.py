@@ -1,9 +1,9 @@
 """
-MS SmartScan — سيرفر الموقع
+MS SmartScan — موقع الفحص (MRI Scanner)
 التشغيل:  python server.py   ثم افتحي  http://localhost:8000
 
-لا يحتاج PHP ولا XAMPP ولا MySQL — مكتبات بايثون القياسية فقط + ultralytics و opencv.
-السجل يُحفظ في ملف SQLite داخل مجلد data (يُنشأ تلقائياً).
+يحلل صور الرنين بالذكاء الاصطناعي ويحفظ النتيجة في قاعدة البيانات المشتركة (../data).
+هذا الموقع يرسل الفحوصات فقط — لا يعرض السجل. السجل في موقع مستقل: ../Patient-Registry
 """
 import base64
 import hashlib
@@ -40,7 +40,7 @@ MAX_IMAGE_PIXELS = 25_000_000
 CSRF_TOKEN = secrets.token_urlsafe(32)
 RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_REQUESTS = 30
-INFERENCE_VERSION = "yolo11n-clahe-tta-v2"
+INFERENCE_VERSION = "yolo11n-raw-focal-ms-v4"   # v4: no CLAHE, whole-brain boxes ignored, run at 320 + 640 px
 MEDICAL_NUMBER_RE = re.compile(r"[A-Z0-9][A-Z0-9\-_/.]{0,29}")
 _request_times = defaultdict(deque)
 _rate_lock = threading.Lock()
@@ -50,7 +50,7 @@ mimetypes.add_type("image/webp", ".webp")   # إصدارات بايثون الق
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(BASE, "static")
-DATA = os.path.join(BASE, "data")
+DATA = os.path.join(os.path.dirname(BASE), "data")   # قاعدة البيانات المشتركة بين الموقعين
 IMAGES = os.path.join(DATA, "images")
 BACKUPS = os.path.join(DATA, "backups")
 DB_PATH = os.path.join(DATA, "smartscan.db")
@@ -300,31 +300,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/status":
             return self.send_json({**detector.status(), "min_confidence": MIN_CONFIDENCE,
                                    "csrf_token": CSRF_TOKEN})
-        if path == "/api/history":
+
+        # موقع الفحص لا يقرأ السجل أبداً — فقط متوسط زمن التحليل (بدون أي بيانات مرضى)
+        if path == "/api/stats":
             with db() as con:
-                rows = con.execute("SELECT * FROM scans ORDER BY created_at DESC LIMIT 200").fetchall()
-                stats = con.execute("""SELECT COUNT(*) total,
-                    SUM(result='Infected') infected,
-                    SUM(result='Healthy') healthy,
-                    SUM(result='Uncertain') uncertain,
-                    AVG(seconds) avg_seconds FROM scans""").fetchone()
-                patients = con.execute("SELECT COUNT(*) FROM patients").fetchone()[0]
-                daily = con.execute("""SELECT substr(created_at, 1, 10) day, COUNT(*) scans,
-                    SUM(result='Infected') infected FROM scans
-                    WHERE created_at >= date('now', 'localtime', '-13 days')
-                    GROUP BY day ORDER BY day""").fetchall()
-            summary = {k: stats[k] or 0 for k in ("total", "infected", "healthy", "uncertain")}
-            summary["patients"] = patients
-            summary["avg_seconds"] = round(stats["avg_seconds"], 2) if stats["avg_seconds"] is not None else None
-            return self.send_json({"items": [row_to_dict(r) for r in rows], "stats": summary,
-                                   "daily": [dict(d) for d in daily]})
-        if path == "/api/patients":
-            with db() as con:
-                rows = con.execute("""SELECT p.medical_number, p.name, p.created_at,
-                    COUNT(s.id) scans, MAX(s.created_at) last_scan
-                    FROM patients p LEFT JOIN scans s ON UPPER(REPLACE(s.patient_id, ' ', '')) = p.medical_number
-                    GROUP BY p.medical_number ORDER BY last_scan DESC""").fetchall()
-            return self.send_json({"items": [dict(r) for r in rows]})
+                avg = con.execute("SELECT AVG(seconds) FROM scans").fetchone()[0]
+            return self.send_json({"avg_seconds": round(avg, 2) if avg is not None else None})
         self.send_error(404)
 
     # ---- POST: تحليل صورة ----
@@ -440,7 +421,9 @@ class Handler(BaseHTTPRequestHandler):
             "patient_id": patient_id,
             "result": result,
             "confidence": conf,
-            "raw_result": f'{out["result"]},{out["confidence"]}',
+            # ناتج النموذج كما هو للمراجعة، مع الصناديق الكبيرة التي تم تجاهلها
+            "raw_result": json.dumps({"result": out["result"], "confidence": out["confidence"],
+                                      "ignored_whole_brain_boxes": out.get("ignored_boxes", [])}),
             "lesions": len(out["boxes"]),
             "boxes": json.dumps(out["boxes"]),
             "seconds": seconds,
@@ -482,51 +465,30 @@ class Handler(BaseHTTPRequestHandler):
         data["uncertain"] = uncertain
         return self.send_json(data)
 
-    # ---- DELETE: حذف فحص ----
-    def do_DELETE(self):
-        if not self.request_allowed():
-            return self.send_json({"error": "Request not allowed."}, 403)
-        if self.rate_limited():
-            return self.send_json({"error": "Too many requests. Please wait a minute and try again."}, 429)
-        if not self.csrf_valid():
-            return self.send_json({"error": "Request could not be verified. Please reload the page."}, 403)
-        m = re.match(r"^/api/history/([\w-]+)$", urlparse(self.path).path)
-        if not m:
-            return self.send_error(404)
-        sid = m.group(1)
-        with db() as con:
-            cursor = con.execute("DELETE FROM scans WHERE id = ?", (sid,))
-        if cursor.rowcount == 0:
-            return self.send_json({"error": "Scan not found."}, 404)
-        for suffix in (".png", "_boxes.png", "_original.png"):
-            p = os.path.join(IMAGES, sid + suffix)
-            if os.path.exists(p):
-                os.remove(p)
-        audit("delete", sid, "ok")
-        return self.send_json({"ok": True})
-
-
 def safe_join(root, rel):
     p = os.path.realpath(os.path.join(root, rel))
     return p if p.startswith(os.path.realpath(root) + os.sep) else os.path.join(root, "__none__")
 
 
 def main():
-    port = PORT
     server = None
     for p in range(PORT, PORT + 10):   # لو المنفذ مشغول نجرب اللي بعده
         try:
             server = ThreadingHTTPServer(("127.0.0.1", p), Handler)
             server.daemon_threads = True
-            port = p
             break
         except OSError:
             continue
     if server is None:
         sys.exit("No free port found")
+    url = f"http://localhost:{p}"
+    try:   # يقرأه موقع السجل ليعرض رابط "MRI Scanner" الصحيح
+        with open(os.path.join(DATA, "scanner_url.txt"), "w", encoding="utf-8") as f:
+            f.write(url)
+    except OSError:
+        pass
 
-    url = f"http://localhost:{port}"
-    print("\n  MS SmartScan")
+    print("\n  MS SmartScan — MRI Scanner")
     print("  -----------------------------")
     print(f"  Website:  {url}")
     print("  Stop:     Ctrl + C\n")

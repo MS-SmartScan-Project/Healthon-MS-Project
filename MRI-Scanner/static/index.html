@@ -7,7 +7,7 @@
 <meta name="description" content="Doctor-facing AI decision support for detecting MS-related lesions on MRI images. Runs fully on-device.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230A1630'/%3E%3Cpath d='M16 7.5c-1-1-2.4-1.5-4-1.5-3 0-5 1.7-5 4 0 4.6 10 3 10 7.2C17 19 15 20 12 20c-1.9 0-3.4-.5-4.5-1.5' fill='none' stroke='%2338BDF8' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -20,10 +20,13 @@
     </a>
     <nav class="topnav" aria-label="Sections">
       <a href="#workspace" data-nav="workspace">Workspace</a>
-      <a href="#records" data-nav="records">Patient Records</a>
       <a href="#technology" data-nav="technology">Technology</a>
     </nav>
     <div class="top-actions">
+      <button class="lang-btn" id="langBtn" type="button" data-no-i18n title="Switch language / تغيير اللغة">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+        <span lang="ar">العربية</span>
+      </button>
       <span class="chip chip-quiet" title="Images and records are processed and stored only on this device">
         <svg class="ic" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         On-device
@@ -65,7 +68,7 @@
         <div class="logo-stage">
           <img src="/static/assets/logo-transparent.webp" alt="" width="988" height="666">
         </div>
-        <div class="float-card fc-1"><span class="dot dot-cyan"></span><div><b>CLAHE enhancement</b><small>Contrast-normalized input</small></div></div>
+        <div class="float-card fc-1"><span class="dot dot-cyan"></span><div><b>Focal lesion check</b><small>Whole-brain regions ignored</small></div></div>
         <div class="float-card fc-2"><span class="dot dot-violet"></span><div><b>Lesion localization</b><small>YOLO11n · on-device</small></div></div>
       </div>
     </div>
@@ -90,7 +93,7 @@
       <ol class="stepper" id="stepper" aria-label="Workflow progress">
         <li data-step="patient"><span class="s-num">1</span><span class="s-txt"><b>Patient</b><small>Name &amp; medical number</small></span></li>
         <li data-step="mri"><span class="s-num">2</span><span class="s-txt"><b>MRI image</b><small>Upload or capture</small></span></li>
-        <li data-step="analysis"><span class="s-num">3</span><span class="s-txt"><b>AI analysis</b><small>CLAHE + YOLO11n</small></span></li>
+        <li data-step="analysis"><span class="s-num">3</span><span class="s-txt"><b>AI analysis</b><small>YOLO11n + focal check</small></span></li>
         <li data-step="finding"><span class="s-num">4</span><span class="s-txt"><b>Finding</b><small>Result &amp; next step</small></span></li>
         <li data-step="record"><span class="s-num">5</span><span class="s-txt"><b>Record</b><small>Saved to registry</small></span></li>
       </ol>
@@ -113,7 +116,6 @@
               <input id="patientId" name="patient_id" maxlength="30" placeholder="e.g. MRN-10024" required aria-describedby="patientIdErr" spellcheck="false">
               <span class="field-err" id="patientIdErr" role="alert"></span>
             </label>
-            <div class="patient-hint" id="patientHint" hidden></div>
           </form>
 
           <div class="card" id="sourceCard">
@@ -239,7 +241,7 @@
             <div class="f-busy">
               <ol class="progress-steps" id="progressSteps">
                 <li data-p="send"><i></i><span>Image sent securely to local AI engine</span></li>
-                <li data-p="infer"><i></i><span>Enhancement (CLAHE) and YOLO11n inference</span></li>
+                <li data-p="infer"><i></i><span>YOLO11n inference and focal-lesion check</span></li>
                 <li data-p="save"><i></i><span>Result saved to patient record</span></li>
               </ol>
             </div>
@@ -271,90 +273,34 @@
             <span class="ns-eyebrow">Next clinical step</span>
             <p class="ns-lead" id="nsLead">Further clinical evaluation is recommended.</p>
             <div class="ns-box">
-              <div class="ns-title">
-                <span class="ns-ic"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/><path d="M7.5 15h9"/></svg></span>
-                <b id="nsTitle">Consider CSF analysis</b>
-              </div>
-              <div id="nsMarkers">
-                <span class="ns-sub">Recommended markers</span>
-                <ul class="markers">
-                  <li><b>OCBs</b><span>Oligoclonal Bands</span></li>
-                  <li><b>κ-FLC</b><span>Kappa Free Light Chains</span></li>
-                </ul>
-              </div>
-              <p class="ns-note" id="nsNote">CSF analysis may provide additional evidence to support the diagnostic workup for MS.</p>
+              <span class="ns-sub" id="nsSub">Recommended diagnostic tests</span>
+              <ol class="tests">
+                <li>
+                  <span class="ns-ic"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/><path d="M7.5 15h9"/></svg></span>
+                  <div>
+                    <b>Lumbar puncture</b>
+                    <span>CSF analysis for oligoclonal bands (OCBs) and kappa free light chains (κ-FLC).</span>
+                  </div>
+                </li>
+                <li>
+                  <span class="ns-ic"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="9"/><path d="M12 3v18M8 8c1.5 1 2.5 1 4 0M16 8c-1.5 1-2.5 1-4 0M7 14c2 0 3 1 5 0M17 14c-2 0-3 1-5 0"/></svg></span>
+                  <div>
+                    <b>Contrast-enhanced MRI — brain &amp; spinal cord</b>
+                    <span>Gadolinium MRI to assess lesion spread in space and time (McDonald criteria).</span>
+                  </div>
+                </li>
+              </ol>
+              <p class="ns-note">Diagnostic tests only. This tool does not suggest any treatment.</p>
             </div>
           </div>
 
           <div class="card record-saved" id="recordSaved" hidden>
             <span class="rs-ic"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5Z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg></span>
             <div>
-              <b>Saved to patient record</b>
+              <b>Saved securely to the Patient Registry</b>
               <small id="rsInfo"></small>
             </div>
-            <a href="#records" class="btn btn-sm btn-soft" id="rsView">View</a>
           </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ Records ============ -->
-  <section class="section section-tint" id="records">
-    <div class="wrap">
-      <div class="section-head">
-        <div>
-          <span class="kicker">Patient records</span>
-          <h2>Scan registry</h2>
-          <p>Every analysis is stored locally with the patient's name, medical number, AI finding, and images.</p>
-        </div>
-        <button class="btn btn-soft" type="button" id="exportCsv">
-          <svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
-          Export CSV
-        </button>
-      </div>
-
-      <div class="insights">
-        <div class="kpis">
-          <div class="kpi"><span>Total scans</span><b id="sTotal">0</b></div>
-          <div class="kpi"><span>Patients</span><b id="sPatients">0</b></div>
-          <div class="kpi tone-red"><span>Suspicious lesion</span><b id="sInf">0</b></div>
-          <div class="kpi tone-amber"><span>Low confidence</span><b id="sUncertain">0</b></div>
-          <div class="kpi tone-green"><span>No finding</span><b id="sOk">0</b></div>
-          <div class="kpi"><span>Avg. analysis</span><b id="sAvg">—</b></div>
-        </div>
-        <div class="card activity">
-          <div class="activity-head"><b>Screening activity</b><small>Last 14 days</small></div>
-          <svg id="activityChart" viewBox="0 0 280 90" preserveAspectRatio="none" role="img" aria-label="Scans per day, last 14 days"></svg>
-          <div class="legend"><span><i class="lg-all"></i>Scans</span><span><i class="lg-inf"></i>Suspicious</span></div>
-        </div>
-      </div>
-
-      <div class="card table-card">
-        <div class="table-tools">
-          <label class="search">
-            <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <input id="search" type="search" placeholder="Search by patient name or medical number" aria-label="Search records">
-          </label>
-          <div class="seg" id="filter" role="group" aria-label="Filter by finding">
-            <button type="button" class="seg-btn on" data-filter="all">All</button>
-            <button type="button" class="seg-btn" data-filter="Infected">Suspicious</button>
-            <button type="button" class="seg-btn" data-filter="Uncertain">Low confidence</button>
-            <button type="button" class="seg-btn" data-filter="Healthy">No finding</button>
-          </div>
-        </div>
-        <div class="table-scroll">
-          <table class="records">
-            <thead>
-              <tr><th>Patient</th><th>Medical no.</th><th>Date &amp; time</th><th>AI finding</th><th>Confidence</th><th>Regions</th><th><span class="sr">Actions</span></th></tr>
-            </thead>
-            <tbody id="recordsBody"></tbody>
-          </table>
-        </div>
-        <div class="empty" id="recordsEmpty" hidden>
-          <span class="f-ic muted"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/></svg></span>
-          <b id="emptyTitle">No scans recorded yet</b>
-          <p id="emptyText">Completed analyses will appear here with the patient's details.</p>
         </div>
       </div>
     </div>
@@ -373,8 +319,8 @@
 
       <ol class="pipeline">
         <li><span class="p-num">01</span><b>Capture</b><p>Raspberry Pi Camera Module v2 or direct image upload.</p></li>
-        <li><span class="p-num">02</span><b>Enhance</b><p>Grayscale conversion and CLAHE contrast normalization (OpenCV).</p></li>
-        <li><span class="p-num">03</span><b>Detect</b><p>YOLO11n lesion detector with test-time augmentation, 640 px input.</p></li>
+        <li><span class="p-num">02</span><b>Detect</b><p>YOLO11n lesion detector on the grayscale MRI, with test-time augmentation, at 320 and 640 px.</p></li>
+        <li><span class="p-num">03</span><b>Focal check</b><p>Regions too large to be a lesion (whole-brain boxes) are ignored, so only focal findings count.</p></li>
         <li><span class="p-num">04</span><b>Report</b><p>Finding, confidence, flagged regions, and next clinical step — saved to the record.</p></li>
       </ol>
 
@@ -394,7 +340,7 @@
           <h3>Device</h3>
           <ul class="ticks">
             <li>Raspberry Pi 5 (4 GB) with Camera Module v2 and touch display</li>
-            <li>Runs fully offline — no cloud, no internet required after setup</li>
+            <li>AI analysis runs locally on the device — MRI images are not uploaded to any cloud service</li>
             <li>Low-cost, portable hardware suited to clinics and screening centers</li>
             <li>Same software runs on a Windows workstation</li>
           </ul>
@@ -422,39 +368,10 @@
   </div>
 </footer>
 
-<!-- Scan detail -->
-<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="dName">
-  <div class="modal-box">
-    <button class="icon-btn modal-x" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-    <div class="m-img">
-      <img id="dImg" alt="MRI scan">
-      <div class="seg seg-dark m-toggle" id="dToggle">
-        <button type="button" class="seg-btn on" data-v="annotated">AI overlay</button>
-        <button type="button" class="seg-btn" data-v="image">Enhanced</button>
-        <button type="button" class="seg-btn" data-v="original">Original</button>
-      </div>
-    </div>
-    <div class="m-info">
-      <span class="badge" id="dBadge"></span>
-      <h3 id="dName"></h3>
-      <span class="m-id" id="dNumber"></span>
-      <dl>
-        <div><dt>AI confidence</dt><dd id="dConf"></dd></div>
-        <div><dt>Regions flagged</dt><dd id="dRegions"></dd></div>
-        <div><dt>Scan date</dt><dd id="dDate"></dd></div>
-        <div><dt>Analysis time</dt><dd id="dTime"></dd></div>
-        <div><dt>Scan ID</dt><dd id="dId" class="mono"></dd></div>
-        <div><dt>Model</dt><dd id="dModel"></dd></div>
-      </dl>
-      <p class="m-text" id="dText"></p>
-      <p class="disclaimer">AI-assisted screening result. Final diagnosis requires clinical assessment and appropriate diagnostic criteria.</p>
-      <button class="btn btn-danger" type="button" id="dDelete">Delete scan</button>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast" role="status" hidden></div>
 
+<script src="/static/common.js"></script>
 <script src="/static/app.js"></script>
+<script src="/static/i18n.js"></script>
 </body>
 </html>

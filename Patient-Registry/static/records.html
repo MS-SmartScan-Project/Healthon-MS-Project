@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patient Registry · MS SmartScan</title>
+<meta name="description" content="MS SmartScan patient and scan registry. Updates live when the MRI Scanner saves a result.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230A1630'/%3E%3Cpath d='M16 7.5c-1-1-2.4-1.5-4-1.5-3 0-5 1.7-5 4 0 4.6 10 3 10 7.2C17 19 15 20 12 20c-1.9 0-3.4-.5-4.5-1.5' fill='none' stroke='%2338BDF8' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="registry-page">
+
+<!-- ============ Header ============ -->
+<header class="topbar" id="topbar">
+  <div class="wrap topbar-in">
+    <a href="/" class="brand" aria-label="MS SmartScan Patient Registry">
+      <img class="brand-logo" src="/static/assets/logo-transparent.webp" alt="MS SmartScan logo" width="988" height="666">
+    </a>
+    <nav class="topnav" aria-label="Sites">
+      <a href="/" class="active">Patient Registry</a>
+      <a href="http://localhost:8000" target="mss-scanner" data-scanner-link class="nav-site" title="Open the MRI Scanner (separate site)">
+        MRI Scanner
+        <svg class="ic" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+      </a>
+    </nav>
+    <div class="top-actions">
+      <button class="lang-btn" id="langBtn" type="button" data-no-i18n title="Switch language / تغيير اللغة">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+        <span lang="ar">العربية</span>
+      </button>
+      <span class="chip chip-quiet" title="Records are stored only on this device">
+        <svg class="ic" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        On-device
+      </span>
+      <span class="model-chip live-chip" id="liveChip" data-state="connecting" role="status" title="Receives new scans from the MRI Scanner automatically"><i></i><span>Connecting…</span></span>
+      <div class="clinician" title="Clinician workstation">
+        <span class="avatar">DR</span>
+        <span class="clinician-text"><b>Clinician</b><small>Neurology · Radiology</small></span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <section class="registry-band">
+    <div class="wrap band-in">
+      <div>
+        <span class="eyebrow"><i></i> Connected to the MRI Scanner</span>
+        <h1>Patient &amp; Scan Registry</h1>
+        <p>Every analysis from the MRI Scanner lands here automatically: patient, medical number, AI finding, confidence, and images. No refresh needed.</p>
+      </div>
+      <div class="band-side">
+        <a href="http://localhost:8000" target="mss-scanner" data-scanner-link class="btn btn-primary btn-lg">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M7 12h10"/></svg>
+          New scan in MRI Scanner
+        </a>
+        <small id="lastSync">Loading records…</small>
+      </div>
+    </div>
+  </section>
+  <!-- ============ Records ============ -->
+  <section class="section registry-section" id="records">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <span class="kicker">Overview</span>
+          <h2>Screening summary</h2>
+          <p>Totals, recent activity, and every scan with its AI finding. Click a row for the full scan.</p>
+        </div>
+        <button class="btn btn-soft" type="button" id="exportXlsx" title="Download the records shown below as a formatted Excel workbook">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+          Export to Excel
+        </button>
+      </div>
+
+      <div class="insights">
+        <div class="kpis">
+          <div class="kpi"><span>Total scans</span><b id="sTotal">0</b></div>
+          <div class="kpi"><span>Patients</span><b id="sPatients">0</b></div>
+          <div class="kpi tone-red"><span>Suspicious lesion</span><b id="sInf">0</b></div>
+          <div class="kpi tone-amber"><span>Low confidence</span><b id="sUncertain">0</b></div>
+          <div class="kpi tone-green"><span>Clear</span><b id="sOk">0</b></div>
+          <div class="kpi"><span>Avg. analysis</span><b id="sAvg">—</b></div>
+        </div>
+        <div class="card activity">
+          <div class="activity-head"><b>Screening activity</b><small>Last 14 days</small></div>
+          <svg id="activityChart" viewBox="0 0 280 90" preserveAspectRatio="none" role="img" aria-label="Scans per day, last 14 days"></svg>
+          <div class="legend"><span><i class="lg-all"></i>Scans</span><span><i class="lg-inf"></i>Suspicious</span></div>
+        </div>
+      </div>
+
+      <div class="card table-card">
+        <div class="table-tools">
+          <label class="search">
+            <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="search" type="search" placeholder="Search by patient name or medical number" aria-label="Search records">
+          </label>
+          <div class="seg" id="filter" role="group" aria-label="Filter by finding">
+            <button type="button" class="seg-btn on" data-filter="all">All</button>
+            <button type="button" class="seg-btn" data-filter="Infected">Suspicious</button>
+            <button type="button" class="seg-btn" data-filter="Uncertain">Low confidence</button>
+            <button type="button" class="seg-btn" data-filter="Healthy">Clear</button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="records">
+            <thead>
+              <tr><th>Patient</th><th>Medical no.</th><th>Date &amp; time</th><th>AI finding</th><th>Confidence</th><th>Regions</th><th><span class="sr">Actions</span></th></tr>
+            </thead>
+            <tbody id="recordsBody"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="recordsEmpty" hidden>
+          <span class="f-ic muted"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/></svg></span>
+          <b id="emptyTitle">No scans recorded yet</b>
+          <p id="emptyText">Completed analyses will appear here with the patient's details.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-in">
+    <img class="footer-logo" src="/static/assets/logo-transparent.webp" alt="MS SmartScan logo" width="988" height="666">
+    <p>Patient Registry · AI-assisted MS lesion screening · Technical Digital College for Girls, Riyadh</p>
+    <p class="fine">Clinical decision-support prototype. Not a medical device. Final diagnosis requires clinical assessment and appropriate diagnostic criteria.</p>
+  </div>
+</footer>
+<!-- Scan detail -->
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="dName">
+  <div class="modal-box">
+    <button class="icon-btn modal-x" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="m-img">
+      <img id="dImg" alt="MRI scan">
+      <div class="seg seg-dark m-toggle" id="dToggle">
+        <button type="button" class="seg-btn on" data-v="annotated">AI overlay</button>
+        <button type="button" class="seg-btn" data-v="image">Enhanced</button>
+        <button type="button" class="seg-btn" data-v="original">Original</button>
+      </div>
+    </div>
+    <div class="m-info">
+      <span class="badge" id="dBadge"></span>
+      <h3 id="dName"></h3>
+      <span class="m-id" id="dNumber"></span>
+      <dl>
+        <div><dt>AI confidence</dt><dd id="dConf"></dd></div>
+        <div><dt>Regions flagged</dt><dd id="dRegions"></dd></div>
+        <div><dt>Scan date</dt><dd id="dDate"></dd></div>
+        <div><dt>Analysis time</dt><dd id="dTime"></dd></div>
+        <div><dt>Scan ID</dt><dd id="dId" class="mono"></dd></div>
+        <div><dt>Model</dt><dd id="dModel"></dd></div>
+      </dl>
+      <p class="m-text" id="dText"></p>
+      <p class="disclaimer">AI-assisted screening result. Final diagnosis requires clinical assessment and appropriate diagnostic criteria.</p>
+      <button class="btn btn-danger" type="button" id="dDelete">Delete scan</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="/static/common.js"></script>
+<script src="/static/registry.js"></script>
+<script src="/static/i18n.js"></script>
+</body>
+</html>

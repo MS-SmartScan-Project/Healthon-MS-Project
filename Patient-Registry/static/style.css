@@ -146,6 +146,10 @@ button { cursor: pointer; }
 .topnav a:hover { color: #fff; background: rgba(255, 255, 255, .06); }
 .topnav a.active { color: #fff; }
 .topnav a.active::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 2px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--cyan), #6f8dff); }
+/* link to the other site (Scanner ⇄ Registry) */
+.topnav a.nav-site { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; color: #cfe0ff; border: 1px solid rgba(120, 160, 255, .25); background: rgba(31, 98, 240, .14); }
+.topnav a.nav-site:hover { background: rgba(31, 98, 240, .26); color: #fff; }
+.topnav a.nav-site .ic { width: 14px; height: 14px; }
 .top-actions { display: flex; align-items: center; gap: 10px; }
 .topbar .chip-quiet { color: #c9d6ee; background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .12); }
 
@@ -155,6 +159,10 @@ button { cursor: pointer; }
   background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .12); color: #b3c2de;
 }
 .model-chip i { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; position: relative; }
+.live-chip[data-state="live"] { background: rgba(34, 184, 238, .14); border-color: rgba(34, 184, 238, .35); color: #9be3ff; }
+.live-chip[data-state="live"] i { background: var(--cyan); box-shadow: 0 0 0 0 rgba(34, 184, 238, .5); animation: ping-cyan 2.2s ease-out infinite; }
+.live-chip[data-state="connecting"], .live-chip[data-state="reconnecting"] { color: #ffd88f; }
+.live-chip[data-state="connecting"] i, .live-chip[data-state="reconnecting"] i { background: var(--amber-dot); animation: pulse 1.2s ease-in-out infinite; }
 .model-chip[data-state="loading"] { color: #ffd88f; }
 .model-chip[data-state="loading"] i { background: var(--amber-dot); animation: pulse 1.2s ease-in-out infinite; }
 .model-chip[data-state="ready"] { background: rgba(22, 163, 74, .14); border-color: rgba(34, 197, 94, .32); color: #86efac; }
@@ -223,6 +231,23 @@ button { cursor: pointer; }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .dot-cyan { background: var(--cyan); box-shadow: 0 0 12px var(--cyan); }
 .dot-violet { background: var(--violet); box-shadow: 0 0 12px var(--violet); }
+
+/* ---------------- Registry site: title band ---------------- */
+.registry-band { padding: 20px 0 0; }
+.band-in {
+  position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between; gap: 28px; flex-wrap: wrap;
+  padding: 34px 40px; border-radius: 24px; color: #dbe6fb;
+  background:
+    radial-gradient(700px 260px at 90% 0%, rgba(34, 184, 238, .18), transparent 60%),
+    radial-gradient(600px 260px at 60% 120%, rgba(124, 92, 255, .2), transparent 60%),
+    linear-gradient(160deg, #0b1c42, var(--navy) 65%);
+  box-shadow: var(--shadow-lg);
+}
+.band-in h1 { margin-top: 14px; font-size: clamp(26px, 2.6vw, 36px); font-weight: 800; color: #fff; }
+.band-in p { margin-top: 8px; max-width: 64ch; color: #b6c5e3; }
+.band-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.band-side small { font-size: 12px; color: #8ea3c9; font-variant-numeric: tabular-nums; }
+.registry-section { padding-top: 32px; }
 
 /* ---------------- Sections ---------------- */
 .section { padding: 56px 0; }
@@ -614,6 +639,7 @@ button { cursor: pointer; }
 /* ---------------- Motion ---------------- */
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 50% { opacity: .35; } }
+@keyframes ping-cyan { 0% { box-shadow: 0 0 0 0 rgba(34, 184, 238, .55); } 80%, 100% { box-shadow: 0 0 0 7px rgba(34, 184, 238, 0); } }
 @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, .5); } 80%, 100% { box-shadow: 0 0 0 7px rgba(22, 163, 74, 0); } }
 @keyframes sweep { 0% { transform: translateY(-100%); } 100% { transform: translateY(340%); } }
 @keyframes flow { to { background-position: 300% 0; } }
@@ -645,8 +671,11 @@ button { cursor: pointer; }
 }
 @media (max-width: 900px) {
   :root { --header-h: 70px; }
-  .topnav { display: none; }
-  .top-actions { margin-left: auto; }
+  .topnav { margin-inline: auto 0; }
+  .topnav a:not(.nav-site) { display: none; }   /* keep the link to the other site on small screens */
+  .top-actions .clinician, .top-actions .chip-quiet { display: none; }
+  .band-side { align-items: flex-start; }
+  .topbar-in { gap: 12px; }
   .brand-logo { height: 58px; }
   .ws-grid { grid-template-columns: 1fr; }
   .ws-viewer { order: -1; }
@@ -682,4 +711,66 @@ button { cursor: pointer; }
   .records td { padding: 3px 0; border: 0; white-space: normal; }
   .records td[data-label]::before { content: attr(data-label); display: inline-block; min-width: 110px; font-size: 12px; color: var(--muted); font-weight: 600; }
   .records td.act { padding-top: 8px; }
+}
+
+/* ================================================================
+   Language switch + Arabic (right-to-left) layout
+   ================================================================ */
+.lang-btn {
+  display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 999px; cursor: pointer;
+  font: 600 13px/1 'IBM Plex Sans Arabic', var(--font); color: #e6eeff;
+  background: rgba(34, 184, 238, .12); border: 1px solid rgba(34, 184, 238, .35); transition: background .15s, border-color .15s;
+}
+.lang-btn:hover { background: rgba(34, 184, 238, .22); border-color: rgba(34, 184, 238, .55); }
+.lang-btn .ic { width: 15px; height: 15px; }
+.lang-btn span[lang="en"] { font-family: var(--font); }
+
+html[lang="ar"] { --font: 'IBM Plex Sans Arabic', 'Inter', system-ui, 'Segoe UI', Tahoma, sans-serif; --font-display: 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', system-ui, sans-serif; }
+html[lang="ar"] body { line-height: 1.7; }
+html[lang="ar"] h1, html[lang="ar"] h2, html[lang="ar"] h3 { letter-spacing: 0; line-height: 1.35; }
+/* Arabic letters must stay joined: no letter-spacing or capitals on labels */
+html[lang="ar"] .kicker, html[lang="ar"] .f-eyebrow, html[lang="ar"] .ns-eyebrow, html[lang="ar"] .ns-sub,
+html[lang="ar"] .viewer-meta dt, html[lang="ar"] .hero-metrics dt, html[lang="ar"] .model-metrics dt,
+html[lang="ar"] .records th, html[lang="ar"] .f-title-row h3, html[lang="ar"] .p-num, html[lang="ar"] .eyebrow { letter-spacing: 0; text-transform: none; }
+html[lang="ar"] .kicker { font-size: 13px; }
+html[lang="ar"] .hero h1 { max-width: 18ch; }
+
+/* mirror the few left/right-specific details */
+[dir="rtl"] .stepper li + li::before { left: auto; right: -8px; }
+[dir="rtl"] .pipeline li:not(:last-child)::after { right: auto; left: -10px; transform: translateY(-50%) rotate(-135deg); }
+[dir="rtl"] .vh-patient { padding-left: 0; border-left: 0; padding-right: 12px; border-right: 1px solid rgba(255, 255, 255, .12); }
+[dir="rtl"] .viewer-meta div { border-right: 0; border-left: 1px solid rgba(255, 255, 255, .06); }
+[dir="rtl"] .viewer-meta div:nth-child(3n) { border-left: 0; }
+[dir="rtl"] .search .ic { left: auto; right: 12px; }
+[dir="rtl"] .search input { padding: 0 38px 0 12px; }
+[dir="rtl"] .records th { text-align: right; }
+[dir="rtl"] .ticks li { padding-left: 0; padding-right: 26px; }
+[dir="rtl"] .ticks li::before { left: auto; right: 0; }
+[dir="rtl"] .modal-x { right: auto; left: 14px; }
+[dir="rtl"] .clinician { padding: 4px 4px 4px 12px; }
+[dir="rtl"] .footer .fine { margin: 0 auto 0 0; text-align: left; }
+[dir="rtl"] .field-label small { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .fc-1 { left: auto; right: 0; }
+[dir="rtl"] .fc-2 { right: auto; left: 0; }
+[dir="rtl"] .stage-tag { left: auto; right: 24px; }
+[dir="rtl"] .kpi::after { left: auto; right: 18px; }
+/* numbers, IDs and the confidence bar keep their natural left-to-right order */
+[dir="rtl"] .conf-bar, [dir="rtl"] .zoom, [dir="rtl"] #activityChart, [dir="rtl"] .mrn, [dir="rtl"] .mono, [dir="rtl"] #patientId { direction: ltr; }
+[dir="rtl"] #patientId { text-align: right; }
+@media (max-width: 640px) {
+  [dir="rtl"] .records td[data-label]::before { margin-left: 8px; }
+  [dir="rtl"] .footer .fine { margin: 0; text-align: right; }
+}
+
+/* Arabic labels in places that use the monospace font for IDs */
+html[lang="ar"] .m-id { font-family: var(--font); }
+
+
+/* small screens: keep the header on one line (status chips show just their coloured dot) */
+.topnav a { white-space: nowrap; }
+@media (max-width: 640px) {
+  .model-chip { padding: 0 10px; }
+  .model-chip > span { display: none; }
+  .lang-btn { padding: 0 10px; }
+  .brand-logo { height: 50px; }
 }

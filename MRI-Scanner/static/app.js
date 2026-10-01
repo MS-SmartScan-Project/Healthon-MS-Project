@@ -1,11 +1,12 @@
-/* MS SmartScan — clinical workspace interactions */
+/* MS SmartScan — MRI Scanner (results are saved to the Patient Registry automatically) */
 (() => {
-  const $ = (id) => document.getElementById(id);
-  const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+  // The Scanner never reads the registry: it only submits scans. Records are viewed on the separate Patient Registry site.
+  const { $, $$, LABEL, TONE, ICON, esc, fmtDate, pct, wait, toast, chrome } = window.MSS;
+  window.name = 'mss-scanner';   // the Registry's "MRI Scanner" link reuses this window
 
   const els = {
     name: $('patient'), id: $('patientId'), fName: $('fName'), fId: $('fId'),
-    nameErr: $('patientErr'), idErr: $('patientIdErr'), hint: $('patientHint'),
+    nameErr: $('patientErr'), idErr: $('patientIdErr'),
     drop: $('dropZone'), fileInput: $('fileInput'), cameraPanel: $('cameraPanel'), camSelect: $('camSelect'),
     startCam: $('startCam'), fileChip: $('fileChip'), imageErr: $('imageErr'),
     analyze: $('analyzeBtn'), after: $('afterActions'),
@@ -18,32 +19,10 @@
   const state = {
     mode: 'upload', stream: null, image: null, imageMeta: null, busy: false, modelReady: false,
     csrf: '', result: null, view: 'annotated', zoom: 1, pan: { x: 0, y: 0 },
-    items: [], patients: [], filter: 'all', query: '', stats: null,
   };
 
-  const LABEL = { Infected: 'Suspicious lesion', Uncertain: 'Low confidence', Healthy: 'No finding' };
-  const TONE = { Infected: 'red', Uncertain: 'amber', Healthy: 'green' };
-  const ICON = {
-    alert: '<svg viewBox="0 0 24 24"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17.5v.01"/></svg>',
-    check: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>',
-    info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>',
-    copy: '<svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/></svg>',
-    eye: '<svg class="ic" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
-  };
-
-  const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const fmtDate = (iso) => { const d = new Date(iso); return isNaN(d) ? '—' : d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
   const normId = (v) => v.replace(/\s+/g, '').toUpperCase();
   const normName = (v) => v.replace(/\s+/g, ' ').trim();
-  const pct = (v) => (typeof v === 'number' ? v.toFixed(1) + '%' : '—');
-  // "No finding" has no lesion boxes, so no model confidence exists (legacy rows stored a placeholder 100).
-  const scanConf = (s) => (s.result !== 'Healthy' && s.confidence != null ? pct(s.confidence) : null);
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  function toast(msg) {
-    const t = $('toast'); t.textContent = msg; t.hidden = false;
-    clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 3200);
-  }
 
   /* ================= Model status ================= */
   async function pollStatus() {
@@ -67,7 +46,6 @@
     if (!name) errs.patient = 'Patient name is required.';
     if (!id) errs.patient_id = 'Medical number is required.';
     else if (!/^[A-Z0-9][A-Z0-9\-_/.]{0,29}$/.test(id)) errs.patient_id = 'Use letters, digits, - _ / . only (maximum 30 characters).';
-    else if (mismatchPatient()) errs.patient_id = 'This medical number is registered to a different patient.';
     return errs;
   }
 
@@ -88,37 +66,8 @@
 
   function shake(el) { if (!el) return; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
 
-  const findPatient = (id) => state.patients.find((p) => p.medical_number === id);
-  function mismatchPatient() {
-    const p = findPatient(normId(els.id.value)); const name = normName(els.name.value);
-    return p && name && p.name.toLowerCase() !== name.toLowerCase() ? p : null;
-  }
-
-  function updatePatientHint() {
-    const id = normId(els.id.value); const p = id && findPatient(id);
-    const hint = els.hint;
-    if (!p) { hint.hidden = true; return; }
-    const name = normName(els.name.value);
-    const scans = `${p.scans} previous scan${p.scans === 1 ? '' : 's'}`;
-    const last = p.last_scan ? ` · last ${fmtDate(p.last_scan)}` : '';
-    hint.hidden = false;
-    if (name && name.toLowerCase() !== p.name.toLowerCase()) {
-      hint.className = 'patient-hint warn';
-      hint.innerHTML = `<span><b>Medical number already registered</b> to ${esc(p.name)} (${scans}).</span><button type="button" data-use>Use name</button>`;
-    } else {
-      hint.className = 'patient-hint';
-      hint.innerHTML = `<span><b>Existing patient:</b> ${esc(p.name)} · ${scans}${esc(last)}</span>${name ? '' : '<button type="button" data-use>Use name</button>'}`;
-    }
-  }
-  els.hint.addEventListener('click', (e) => {
-    if (!e.target.closest('[data-use]')) return;
-    const p = findPatient(normId(els.id.value)); if (!p) return;
-    els.name.value = p.name; onPatientInput();
-  });
-
   let touched = false;
   function onPatientInput() {
-    updatePatientHint();
     if (touched) showFieldErrors(fieldErrors());
     else [[els.fName, els.name], [els.fId, els.id]].forEach(([w, i]) => w.classList.toggle('valid', !!i.value.trim()));
     updateUI();
@@ -374,7 +323,7 @@
     if (data.fields) { showFieldErrors(data.fields, { focus: true }); }
     if (!data.error) {
       els.preview.src = data.annotated + '?t=' + Date.now();
-      await Promise.all([loadHistory(), loadPatients()]);
+      await loadStats();
     }
     showResult(data);
     updateUI();
@@ -420,19 +369,15 @@
       $('fText').textContent = 'A lesion was detected in the MRI image that may be associated with Multiple Sclerosis (MS) or another demyelinating condition.';
       $('fConfNote').textContent = 'Highest confidence among the lesion regions returned by the model.';
       $('nsLead').textContent = 'Further clinical evaluation is recommended.';
-      $('nsTitle').textContent = 'Consider CSF analysis';
-      $('nsMarkers').hidden = false;
-      $('nsNote').textContent = 'CSF analysis may provide additional evidence to support the diagnostic workup for MS.';
+      $('nsSub').textContent = 'Recommended diagnostic tests';
       ns.hidden = false; tag('Suspicious lesion', 'red');
     } else if (d.result === 'Uncertain') {
       f.dataset.tone = 'amber'; $('fIcon').innerHTML = ICON.alert;
       $('fTitle').textContent = 'Low-confidence finding';
       $('fText').textContent = 'The model returned a possible lesion below the 70% review threshold. This result is inconclusive and should not be read as normal or abnormal without expert review.';
       $('fConfNote').textContent = 'Below the 70% threshold (marker on the bar) used to report a suspicious lesion.';
-      $('nsLead').textContent = 'Expert review of the MRI is recommended.';
-      $('nsTitle').textContent = 'Radiologist review';
-      $('nsMarkers').hidden = false;
-      $('nsNote').textContent = 'If clinical suspicion of MS remains after review, CSF analysis (OCBs, κ-FLC) may provide additional evidence for the diagnostic workup.';
+      $('nsLead').textContent = 'Expert radiology review of this MRI is recommended first.';
+      $('nsSub').textContent = 'If clinical suspicion of MS remains after review';
       ns.hidden = false; tag('Low-confidence finding', 'amber');
     } else {
       f.dataset.tone = 'green'; $('fIcon').innerHTML = ICON.check;
@@ -442,167 +387,36 @@
       ns.hidden = true; tag('No suspicious pattern', 'green');
     }
     $('rsInfo').textContent = `${normName(els.name.value)} · #${normId(els.id.value)} · ${fmtDate(d.created_at)}`;
-    $('rsView').dataset.id = d.id;
     els.recordSaved.hidden = false;
   }
-
-  $('rsView').addEventListener('click', (e) => {
-    const id = e.currentTarget.dataset.id;
-    state.filter = 'all'; state.query = ''; $('search').value = '';
-    $$('#filter .seg-btn').forEach((x) => x.classList.toggle('on', x.dataset.filter === 'all'));
-    renderRecords();
-    setTimeout(() => { const row = $('recordsBody').querySelector(`[data-id="${CSS.escape(id)}"]`); if (row) { row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash'); } }, 500);
-  });
 
   $('newImageBtn').addEventListener('click', () => { if (state.busy) return; clearImage(); if (state.mode === 'upload') els.fileInput.click(); });
   $('newPatientBtn').addEventListener('click', () => {
     if (state.busy) return;
     els.name.value = ''; els.id.value = ''; touched = false;
     showFieldErrors({}); [els.fName, els.fId].forEach((w) => w.classList.remove('valid'));
-    els.hint.hidden = true; clearImage(); els.name.focus();
+    clearImage(); els.name.focus();
   });
 
-  /* ================= Records ================= */
-  async function loadHistory() {
+  /* ================= Hero stat (no patient data) ================= */
+  async function loadStats() {
     try {
-      const d = await (await fetch('/api/history')).json();
-      state.items = d.items || []; state.stats = d.stats;
-      const s = d.stats;
-      $('sTotal').textContent = s.total; $('sPatients').textContent = s.patients;
-      $('sInf').textContent = s.infected; $('sUncertain').textContent = s.uncertain; $('sOk').textContent = s.healthy;
-      const avg = typeof s.avg_seconds === 'number' ? s.avg_seconds.toFixed(1) + ' s' : '—';
-      $('sAvg').textContent = avg;
+      const s = await (await fetch('/api/stats')).json();
       $('heroAvg').innerHTML = typeof s.avg_seconds === 'number' ? `${s.avg_seconds.toFixed(1)}<small>s</small>` : '—';
-      renderChart(d.daily || []);
-      renderRecords();
     } catch (e) { /* ignore — server may be restarting */ }
   }
 
-  async function loadPatients() {
-    try { state.patients = (await (await fetch('/api/patients')).json()).items || []; updatePatientHint(); } catch (e) { /* ignore */ }
-  }
-
-  function filtered() {
-    const q = state.query.trim().toLowerCase();
-    return state.items.filter((s) => (state.filter === 'all' || s.result === state.filter)
-      && (!q || (s.patient || '').toLowerCase().includes(q) || (s.patient_id || '').toLowerCase().includes(q)));
-  }
-
-  function renderRecords() {
-    const rows = filtered();
-    const body = $('recordsBody');
-    body.innerHTML = rows.map((s) => `
-      <tr data-id="${esc(s.id)}" tabindex="0">
-        <td data-label="Patient"><div class="who"><span class="thumb">${s.media_available ? `<img src="${esc(s.annotated)}" alt="" loading="lazy">` : ''}</span>
-          <span><b>${esc(s.patient || 'Unnamed (legacy record)')}</b><small>${esc(s.inference_version ? 'YOLO11n' : 'Legacy scan')}</small></span></div></td>
-        <td data-label="Medical no.">${s.patient_id ? `<span class="mrn">${esc(s.patient_id)}</span>` : '—'}</td>
-        <td data-label="Date & time">${fmtDate(s.created_at)}</td>
-        <td data-label="AI finding"><span class="badge ${TONE[s.result] || 'green'}">${LABEL[s.result] || esc(s.result)}</span></td>
-        <td data-label="Confidence" class="num-cell">${scanConf(s) || '—'}</td>
-        <td data-label="Regions" class="num-cell">${s.lesions ?? '—'}</td>
-        <td class="act"><button type="button" class="view-btn">${ICON.eye} View</button></td>
-      </tr>`).join('');
-    const empty = rows.length === 0;
-    $('recordsEmpty').hidden = !empty;
-    if (empty) {
-      const any = state.items.length > 0;
-      $('emptyTitle').textContent = any ? 'No matching records' : 'No scans recorded yet';
-      $('emptyText').textContent = any ? 'Try a different name, medical number, or filter.' : "Completed analyses will appear here with the patient's details.";
-    }
-  }
-
-  $('search').addEventListener('input', (e) => { state.query = e.target.value; renderRecords(); });
-  $$('#filter .seg-btn').forEach((b) => b.addEventListener('click', () => {
-    state.filter = b.dataset.filter;
-    $$('#filter .seg-btn').forEach((x) => x.classList.toggle('on', x === b));
-    renderRecords();
-  }));
-
-  function renderChart(daily) {
-    const svg = $('activityChart'), days = [];
-    const byDay = Object.fromEntries(daily.map((d) => [d.day, d]));
-    for (let i = 13; i >= 0; i--) {
-      const dt = new Date(); dt.setDate(dt.getDate() - i);
-      const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-      days.push({ key, label: dt.getDate(), scans: byDay[key]?.scans || 0, inf: byDay[key]?.infected || 0 });
-    }
-    const max = Math.max(1, ...days.map((d) => d.scans));
-    const W = 280, H = 90, top = 6, base = 76, bw = 12, gap = (W - bw * 14) / 13;
-    let out = `<line class="base" x1="0" x2="${W}" y1="${base}" y2="${base}"/>`;
-    days.forEach((d, i) => {
-      const x = i * (bw + gap), h = (d.scans / max) * (base - top), hi = (d.inf / max) * (base - top);
-      if (d.scans) out += `<rect class="bar" x="${x}" y="${base - h}" width="${bw}" height="${h}" rx="3"><title>${d.key}: ${d.scans} scan(s), ${d.inf} suspicious</title></rect>`;
-      if (d.inf) out += `<rect class="bar-inf" x="${x}" y="${base - hi}" width="${bw}" height="${hi}" rx="3"/>`;
-      if (i % 2 === 1 || i === 13) out += `<text x="${x + bw / 2}" y="${H - 2}" text-anchor="middle">${d.label}</text>`;
-    });
-    svg.innerHTML = out;
-  }
-
-  $('exportCsv').addEventListener('click', () => {
-    const rows = filtered();
-    if (!rows.length) { toast('No records to export.'); return; }
-    const cell = (v) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-    const head = ['Scan ID', 'Date', 'Patient name', 'Medical number', 'AI finding', 'AI confidence (%)', 'Regions flagged', 'Analysis time (s)', 'Model version'];
-    const lines = [head, ...rows.map((s) => [s.id, s.created_at, s.patient, s.patient_id, LABEL[s.result] || s.result, s.confidence ?? '', s.lesions, s.seconds, s.inference_version || 'legacy'])];
-    const blob = new Blob(['﻿' + lines.map((l) => l.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = `ms-smartscan-records-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    toast(`Exported ${rows.length} record${rows.length === 1 ? '' : 's'}.`);
-  });
-
-  /* ================= Scan detail modal ================= */
-  const modal = $('modal'); let current = null;
-  function openScan(id) {
-    current = state.items.find((s) => s.id === id); if (!current) return;
-    const tone = TONE[current.result] || 'green';
-    $('dImg').src = current.annotated;
-    $('dBadge').className = 'badge ' + tone; $('dBadge').textContent = LABEL[current.result] || current.result;
-    $('dName').textContent = current.patient || 'Unnamed (legacy record)';
-    $('dNumber').textContent = current.patient_id ? 'Medical no. ' + current.patient_id : 'No medical number';
-    $('dConf').textContent = scanConf(current) || 'Not applicable';
-    $('dRegions').textContent = current.lesions;
-    $('dDate').textContent = fmtDate(current.created_at);
-    $('dTime').textContent = current.seconds != null ? current.seconds + ' s' : '—';
-    $('dId').textContent = current.id; $('dId').title = current.id;
-    $('dModel').textContent = current.inference_version || 'Legacy';
-    $('dText').textContent = current.result === 'Infected'
-      ? 'Suspicious lesion detected that may be associated with MS or another demyelinating condition. Consider CSF analysis (OCBs, κ-FLC) as part of further clinical evaluation.'
-      : current.result === 'Uncertain' ? 'Low-confidence finding below the 70% review threshold. Expert radiology review is recommended.'
-        : 'No suspicious MS-related pattern was detected by the current AI screening model.';
-    $$('#dToggle .seg-btn').forEach((x, i) => x.classList.toggle('on', i === 0));
-    modal.classList.add('open');
-    modal.querySelector('[data-close]').focus();
-  }
-  $('recordsBody').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-id]'); if (tr) openScan(tr.dataset.id); });
-  $('recordsBody').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const tr = e.target.closest('tr[data-id]'); if (tr) openScan(tr.dataset.id); } });
-  $('dToggle').addEventListener('click', (e) => {
-    const b = e.target.closest('.seg-btn'); if (!b || !current) return;
-    $$('#dToggle .seg-btn').forEach((x) => x.classList.toggle('on', x === b));
-    $('dImg').src = current[b.dataset.v];
-  });
-  const closeModal = () => modal.classList.remove('open');
-  modal.addEventListener('click', (e) => { if (e.target === modal || e.target.closest('[data-close]')) closeModal(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
-  $('dDelete').addEventListener('click', async () => {
-    if (!current || !confirm(`Delete this scan for ${current.patient || 'this patient'}? This cannot be undone.`)) return;
-    const res = await fetch('/api/history/' + encodeURIComponent(current.id), { method: 'DELETE', headers: { 'X-CSRF-Token': state.csrf } });
-    if (!res.ok) { toast('The scan could not be deleted. Reload the page and try again.'); return; }
-    closeModal(); toast('Scan deleted.'); await Promise.all([loadHistory(), loadPatients()]);
-  });
-
   /* ================= Page chrome ================= */
-  const topbar = $('topbar');
-  addEventListener('scroll', () => topbar.classList.toggle('scrolled', scrollY > 8), { passive: true });
-  const navLinks = $$('.topnav a');
+  chrome();
+  const navLinks = $$('.topnav a[data-nav]');
   const spy = new IntersectionObserver((entries) => {
     entries.forEach((en) => { if (en.isIntersecting) navLinks.forEach((a) => a.classList.toggle('active', a.dataset.nav === en.target.id)); });
   }, { rootMargin: '-45% 0px -50% 0px' });
-  ['workspace', 'records', 'technology'].forEach((id) => spy.observe($(id)));
+  ['workspace', 'technology'].forEach((id) => spy.observe($(id)));
 
   try { if (!localStorage.getItem('mss-notice-ack')) $('notice').hidden = false; } catch (e) { $('notice').hidden = false; }
   $('noticeOk').addEventListener('click', () => { $('notice').hidden = true; try { localStorage.setItem('mss-notice-ack', '1'); } catch (e) { /* ignore */ } });
 
   addEventListener('beforeunload', stopCamera);
-  updateUI(); pollStatus(); loadHistory(); loadPatients();
+  updateUI(); pollStatus(); loadStats();
 })();
