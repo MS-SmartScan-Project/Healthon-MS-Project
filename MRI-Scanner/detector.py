@@ -1,9 +1,11 @@
 """
 محرك التحليل — النموذج يُحمَّل مرة واحدة فقط فيكون كل فحص أسرع بكثير.
 
-النموذج: lesion_yolo26s.pt — YOLO26s مدرَّب على MSLesSeg (شرائح FLAIR محورية، 75 مريضاً،
-أقنعة بؤر من خبراء، تقسيم حسب المريض). فئة واحدة: lesion. على مرضى الاختبار:
-precision 0.67، recall 0.59، mAP50 0.62.
+النموذج: lesion_yolo26s_photo.pt — YOLO26s مدرَّب على MSLesSeg (شرائح FLAIR محورية، 75 مريضاً،
+أقنعة بؤر من خبراء، تقسيم حسب المريض)، مع محاكاة تصوير الورقة المطبوعة بالكاميرا
+(ميلان، لمعان، ضبابية، ضجيج). فئة واحدة: lesion.
+على شرائح مرضى الاختبار: يرصد بؤراً في 78% من الشرائح المصابة الملتقطة كصورة (80% للنظيفة)
+مع إنذار كاذب 2-4% على الشرائح السليمة.
 
 الخطوات:
   1) قراءة الصورة وتحويلها إلى رمادي
@@ -17,8 +19,8 @@ import threading
 
 import cv2
 
-MODEL_PATH = os.environ.get("MS_MODEL") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "lesion_yolo26s.pt")
-CONF = 0.26          # best F1 threshold on the validation patients
+MODEL_PATH = os.environ.get("MS_MODEL") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "lesion_yolo26s_photo.pt")
+CONF = 0.25          # best F1 threshold on the validation patients
 IMAGE_SIZES = (640,)       # training size
 MAX_LESION_AREA = 0.15   # آفة MS بقعة صغيرة؛ صندوق يغطي أكثر من 15% من الصورة = الدماغ كله، لا آفة
 
