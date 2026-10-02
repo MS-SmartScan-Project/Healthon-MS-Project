@@ -1,2 +1,6 @@
-data/
 __pycache__/
+# data/ is committed (demo data with made-up patients) except the secret key and temporary SQLite files.
+# Without auth.key the sites create a new one and still accept every PIN (checked against the stored PIN hashes).
+data/auth.key
+data/*.db-wal
+data/*.db-shm
