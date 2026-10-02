@@ -131,8 +131,8 @@
     if (file.size <= 0 || file.size > 10 * 1024 * 1024) { els.imageErr.textContent = 'The image must be 10 MB or smaller.'; return; }
     const img = new Image();
     img.onload = () => {
-      state.image = toDataURL(img, img.naturalWidth, img.naturalHeight);
-      state.imageMeta = { name: file.name, info: `${img.naturalWidth} × ${img.naturalHeight} px · ${(file.size / 1024 / 1024).toFixed(2)} MB` };
+      state.image = toSquare640(img, img.naturalWidth, img.naturalHeight);
+      state.imageMeta = { name: file.name, info: `${img.naturalWidth} × ${img.naturalHeight} → ${MODEL_SIZE} × ${MODEL_SIZE} px` };
       URL.revokeObjectURL(img.src);
       resetResult();
       showImage(state.image);
@@ -143,12 +143,14 @@
     els.fileInput.value = '';
   }
 
-  /* Downscale to max 1600px and encode as PNG (unchanged from the original pipeline) */
-  function toDataURL(source, w, h) {
-    const k = Math.min(1, 1600 / Math.max(w, h));
+  /* Every image sent to the model is the centre square, resized to the model's 640 × 640 input.
+     The live camera view shows exactly this square, so what you see is what gets analyzed. */
+  const MODEL_SIZE = 640;
+  function toSquare640(source, w, h) {
+    const side = Math.min(w, h);
     const c = document.createElement('canvas');
-    c.width = Math.round(w * k); c.height = Math.round(h * k);
-    c.getContext('2d').drawImage(source, 0, 0, c.width, c.height);
+    c.width = MODEL_SIZE; c.height = MODEL_SIZE;
+    c.getContext('2d').drawImage(source, (w - side) / 2, (h - side) / 2, side, side, 0, 0, MODEL_SIZE, MODEL_SIZE);
     return c.toDataURL('image/png');
   }
 
@@ -223,6 +225,7 @@
     // viewer
     const showVideo = state.mode === 'camera' && !!state.stream && !state.image;
     els.video.hidden = !showVideo;
+    $('camHint').hidden = !showVideo;
     els.stageEmpty.hidden = showVideo || !els.preview.hidden;
     const name = normName(els.name.value), id = normId(els.id.value);
     els.vhPatient.innerHTML = name || id ? `<b>${esc(name || 'Unnamed')}</b>${id ? ' · #' + esc(id) : ''}` : 'No patient selected';
@@ -285,8 +288,8 @@
     if (!state.modelReady) { toast('The AI model is still loading. Please wait a moment.'); return; }
 
     if (!image) { // camera capture
-      image = toDataURL(els.video, els.video.videoWidth, els.video.videoHeight);
-      state.image = image; state.imageMeta = { name: 'Camera capture', info: `${els.video.videoWidth} × ${els.video.videoHeight} px` };
+      image = toSquare640(els.video, els.video.videoWidth, els.video.videoHeight);
+      state.image = image; state.imageMeta = { name: 'Camera capture', info: `${MODEL_SIZE} × ${MODEL_SIZE} px` };
       showImage(image);
     }
 

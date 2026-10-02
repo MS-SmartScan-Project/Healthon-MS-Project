@@ -393,6 +393,10 @@ button { cursor: pointer; }
 .stage-inner.dragging { transition: none; cursor: grabbing; }
 .viewer-stage.zoomed .stage-inner { cursor: grab; }
 .stage-inner video, .stage-inner img { max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; user-select: none; }
+/* 640 × 640 capture area: the live view is cropped to the same centre square that is sent to the model */
+.stage-inner video { width: auto; aspect-ratio: 1 / 1; object-fit: cover; outline: 2px dashed rgba(94, 214, 255, .85); outline-offset: -2px; }
+.stage-inner img { aspect-ratio: 1 / 1; width: auto; }
+.cam-hint { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); padding: 4px 12px; border-radius: 999px; background: rgba(8, 20, 45, .78); color: #cfe9ff; font-size: 12.5px; font-weight: 600; pointer-events: none; white-space: nowrap; }
 .stage-empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; text-align: center; color: #7f93b8; padding: 20px; }
 .stage-empty svg { width: 96px; height: 96px; fill: none; stroke: #2c4476; stroke-width: 1.6; stroke-linecap: round; margin-bottom: 6px; }
 .stage-empty b { color: #cfdcf3; font-size: 15px; }

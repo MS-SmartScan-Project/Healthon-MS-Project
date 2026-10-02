@@ -21,6 +21,7 @@
     'Clinician': 'الطبيب',
     'Neurology · Radiology': 'الأعصاب · الأشعة',
     'AI model ready': 'النموذج جاهز',
+    'Fit the MRI inside the square · 640 × 640': 'ضعي صورة الرنين داخل المربع · 640 × 640',
     'YOLO26s · lesion model loaded': 'YOLO26s · تم تحميل نموذج البؤر',
     'Model unavailable': 'النموذج غير متاح',
     'Switch language': 'تغيير اللغة',
