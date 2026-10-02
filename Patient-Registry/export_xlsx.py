@@ -7,7 +7,7 @@ import zipfile
 from datetime import datetime
 from xml.sax.saxutils import escape
 
-FINDING = {"Infected": "Suspected MS/SVD", "Uncertain": "Low confidence", "Healthy": "Clear"}
+FINDING = {"Infected": "Abnormal", "Uncertain": "Abnormal (low confidence)", "Healthy": "Normal"}
 NEXT_STEP = {
     "Infected": "Differentiate MS vs SVD: lumbar puncture (CSF OCBs, κ-FLC); contrast-enhanced MRI brain & spinal cord; "
                 "vascular risk assessment (BP, HbA1c, lipids)",

@@ -79,15 +79,15 @@
         <div class="kpis">
           <div class="kpi"><span>Total scans</span><b id="sTotal">0</b></div>
           <div class="kpi"><span>Patients</span><b id="sPatients">0</b></div>
-          <div class="kpi tone-red"><span>Suspected MS/SVD</span><b id="sInf">0</b></div>
-          <div class="kpi tone-amber"><span>Low confidence</span><b id="sUncertain">0</b></div>
-          <div class="kpi tone-green"><span>Clear</span><b id="sOk">0</b></div>
+          <div class="kpi tone-red"><span>Abnormal</span><b id="sInf">0</b></div>
+          <div class="kpi tone-amber"><span>Abnormal (low confidence)</span><b id="sUncertain">0</b></div>
+          <div class="kpi tone-green"><span>Normal</span><b id="sOk">0</b></div>
           <div class="kpi"><span>Avg. analysis</span><b id="sAvg">—</b></div>
         </div>
         <div class="card activity">
           <div class="activity-head"><b>Screening activity</b><small>Last 14 days</small></div>
           <svg id="activityChart" viewBox="0 0 280 90" preserveAspectRatio="none" role="img" aria-label="Scans per day, last 14 days"></svg>
-          <div class="legend"><span><i class="lg-all"></i>Scans</span><span><i class="lg-inf"></i>Suspected MS/SVD</span></div>
+          <div class="legend"><span><i class="lg-all"></i>Scans</span><span><i class="lg-inf"></i>Abnormal</span></div>
         </div>
       </div>
 
@@ -99,9 +99,9 @@
           </label>
           <div class="seg" id="filter" role="group" aria-label="Filter by finding">
             <button type="button" class="seg-btn on" data-filter="all">All</button>
-            <button type="button" class="seg-btn" data-filter="Infected">Suspected MS/SVD</button>
-            <button type="button" class="seg-btn" data-filter="Uncertain">Low confidence</button>
-            <button type="button" class="seg-btn" data-filter="Healthy">Clear</button>
+            <button type="button" class="seg-btn" data-filter="Infected">Abnormal</button>
+            <button type="button" class="seg-btn" data-filter="Uncertain">Abnormal (low confidence)</button>
+            <button type="button" class="seg-btn" data-filter="Healthy">Normal</button>
           </div>
         </div>
         <div class="table-scroll">

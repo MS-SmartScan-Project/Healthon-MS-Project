@@ -62,8 +62,9 @@ def load_model():
     try:
         os.environ["YOLO_VERBOSE"] = "False"
         from ultralytics import YOLO
-        _model = YOLO(MODEL_PATH)
-        _gate = YOLO(GATE_PATH, task="classify")
+        gate = YOLO(GATE_PATH, task="classify")
+        model = YOLO(MODEL_PATH)
+        _gate, _model = gate, model      # "ready" only once both are loaded
         _error = None
     except Exception as e:  # مكتبة ناقصة أو ملف تالف
         _error = str(e)
@@ -91,7 +92,7 @@ def enhance(image_path, enhanced_path=None):
 
 def analyze(image_path, enhanced_path, annotated_path):
     """يحلل الصورة ويرجع النتيجة + أماكن البؤر، ويحفظ نسخة مرسوم عليها المربعات."""
-    if _model is None:
+    if _model is None or _gate is None:
         raise RuntimeError(_error or "النموذج غير محمّل")
 
     # الخطوة 0 — هل هي صورة رنين دماغ أصلاً؟

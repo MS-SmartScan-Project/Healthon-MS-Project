@@ -21,6 +21,16 @@
     'Clinician': 'الطبيب',
     'Neurology · Radiology': 'الأعصاب · الأشعة',
     'AI model ready': 'النموذج جاهز',
+    'Abnormal': 'غير طبيعي',
+    'Normal': 'طبيعي',
+    'Abnormal (low confidence)': 'غير طبيعي (ثقة منخفضة)',
+    'Analysis time is measured live on this device.': 'زمن التحليل يُقاس مباشرة على هذا الجهاز.',
+    'White matter lesions were detected. They may indicate Multiple Sclerosis (MS) or cerebral Small Vessel Disease (SVD); MRI appearance alone cannot reliably tell them apart.':
+      'رُصدت آفات في المادة البيضاء. قد تدل على التصلب المتعدد (MS) أو أمراض الأوعية الدموية الدماغية الصغيرة (SVD)؛ ولا يمكن التمييز بينهما بشكل موثوق من صورة الرنين وحدها.',
+    'The model found a possible white matter lesion with confidence below the 50% review threshold. Expert review is recommended before acting on this result.':
+      'رصد النموذج آفة محتملة في المادة البيضاء بثقة أقل من حد المراجعة 50%. يوصى بمراجعة مختص قبل الاعتماد على هذه النتيجة.',
+    'Below the 50% threshold (marker on the bar) used to report an abnormal result.': 'أقل من حد 50% (العلامة على الشريط) المستخدم للإبلاغ عن نتيجة غير طبيعية.',
+    'No white matter lesion was detected by the AI screening model.': 'لم يرصد نموذج الفحص بالذكاء الاصطناعي أي آفة في المادة البيضاء.',
     'Not a brain MRI': 'ليست صورة رنين للدماغ',
     'Not an MRI': 'ليست صورة رنين',
     'Not an MRI — rejected': 'ليست صورة رنين — مرفوضة',
