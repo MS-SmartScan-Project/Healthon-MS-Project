@@ -21,6 +21,11 @@
     'Clinician': 'الطبيب',
     'Neurology · Radiology': 'الأعصاب · الأشعة',
     'AI model ready': 'النموذج جاهز',
+    'Not a brain MRI': 'ليست صورة رنين للدماغ',
+    'Not an MRI': 'ليست صورة رنين',
+    'Not an MRI — rejected': 'ليست صورة رنين — مرفوضة',
+    'This image does not look like a brain MRI slice, so it was not analyzed or saved. Place the printed axial FLAIR scan upright inside the square and capture again.':
+      'هذه الصورة لا تبدو شريحة رنين للدماغ، لذلك لم تُحلَّل ولم تُحفظ. ضعي صورة FLAIR المحورية المطبوعة معتدلة داخل المربع وأعيدي التصوير.',
     'Fit the MRI inside the square · 640 × 640': 'ضعي صورة الرنين داخل المربع · 640 × 640',
     'YOLO26s · lesion model loaded': 'YOLO26s · تم تحميل نموذج البؤر',
     'Model unavailable': 'النموذج غير متاح',

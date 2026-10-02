@@ -8,6 +8,8 @@
 مع إنذار كاذب 2-4% على الشرائح السليمة.
 
 الخطوات:
+  0) بوابة: مصنِّف صغير (mri_gate.pt) يتأكد أن الصورة شريحة رنين دماغ؛ أي صورة أخرى (وجوه، أوراق، غرفة مظلمة) تُرفض
+     ولا تُحلَّل ولا تُحفظ
   1) قراءة الصورة وتحويلها إلى رمادي
   2) تشغيل النموذج على الصورة الرمادية **بدون CLAHE** (CLAHE يُخفي البؤر؛ يُستخدم لصورة العرض "Enhanced" فقط)
      بحجم 640 (حجم التدريب) وبحد ثقة CONF المختار من منحنى F1 على مجموعة التحقق
@@ -22,6 +24,8 @@ import cv2
 MODEL_PATH = os.environ.get("MS_MODEL") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "lesion_yolo26s_photo.pt")
 CONF = 0.25          # best F1 threshold on the validation patients
 IMAGE_SIZES = (640,)       # training size
+GATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mri_gate.pt")
+MIN_MRI_PROBABILITY = 0.5   # gate: below this the image is not treated as a brain MRI
 MAX_LESION_AREA = 0.15   # آفة MS بقعة صغيرة؛ صندوق يغطي أكثر من 15% من الصورة = الدماغ كله، لا آفة
 
 
@@ -43,17 +47,23 @@ def merge_duplicates(boxes):
             kept.append(b)
     return kept
 _model = None
+_gate = None
 _lock = threading.Lock()
+
+
+class NotMRIError(ValueError):
+    """The image does not look like a brain MRI slice, so it is not analyzed."""
 _error = None
 
 
 def load_model():
     """يحمّل النموذج (يُستدعى مرة واحدة عند تشغيل السيرفر)."""
-    global _model, _error
+    global _model, _gate, _error
     try:
         os.environ["YOLO_VERBOSE"] = "False"
         from ultralytics import YOLO
         _model = YOLO(MODEL_PATH)
+        _gate = YOLO(GATE_PATH, task="classify")
         _error = None
     except Exception as e:  # مكتبة ناقصة أو ملف تالف
         _error = str(e)
@@ -83,6 +93,16 @@ def analyze(image_path, enhanced_path, annotated_path):
     """يحلل الصورة ويرجع النتيجة + أماكن البؤر، ويحفظ نسخة مرسوم عليها المربعات."""
     if _model is None:
         raise RuntimeError(_error or "النموذج غير محمّل")
+
+    # الخطوة 0 — هل هي صورة رنين دماغ أصلاً؟
+    color = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    if color is None:
+        raise ValueError("تعذّرت قراءة الصورة")
+    with _lock:
+        probs = _gate(color, imgsz=224, verbose=False)[0].probs.data
+    mri_probability = float(probs[next(k for k, v in _gate.names.items() if v == "mri")])
+    if mri_probability < MIN_MRI_PROBABILITY:
+        raise NotMRIError(f"not a brain MRI (p={mri_probability:.3f})")
 
     gray, enhanced = enhance(image_path, enhanced_path)
     model_input = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)      # بدون CLAHE — انظر الوصف أعلاه
@@ -132,5 +152,6 @@ def analyze(image_path, enhanced_path, annotated_path):
         "boxes": boxes,
         "ignored_boxes": ignored,     # whole-brain regions, kept for audit only
         "tta": False,
+        "mri_probability": round(mri_probability, 3),
         "image_sizes": list(IMAGE_SIZES),
     }

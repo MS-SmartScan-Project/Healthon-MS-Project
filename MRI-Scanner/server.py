@@ -40,7 +40,7 @@ MAX_IMAGE_PIXELS = 25_000_000
 CSRF_TOKEN = secrets.token_urlsafe(32)
 RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_REQUESTS = 30
-INFERENCE_VERSION = "yolo26s-mslesseg-photo-v6"   # v6: YOLO26s, MSLesSeg FLAIR + simulated camera photos, conf 0.25, 640 px, no CLAHE, no TTA
+INFERENCE_VERSION = "yolo26s-mslesseg-photo-v7"   # v7: MRI gate (mri_gate.pt) + YOLO26s, MSLesSeg FLAIR + simulated camera photos, conf 0.25, 640 px
 MEDICAL_NUMBER_RE = re.compile(r"[A-Z0-9][A-Z0-9\-_/.]{0,29}")
 _request_times = defaultdict(deque)
 _rate_lock = threading.Lock()
@@ -399,6 +399,15 @@ class Handler(BaseHTTPRequestHandler):
         t0 = time.time()
         try:
             out = detector.analyze(original_path, img_path, ann_path)
+        except detector.NotMRIError as e:
+            for p in (original_path, img_path, ann_path):
+                if os.path.exists(p):
+                    os.remove(p)
+            sys.stderr.write(f"Rejected {scan_id}: {e}\n")
+            audit("analyze", scan_id, "not-mri-rejected")
+            return self.send_json({"error": "This image does not look like a brain MRI slice, so it was not analyzed or saved. "
+                                            "Place the printed axial FLAIR scan upright inside the square and capture again.",
+                                   "title": "Not a brain MRI", "code": "not_mri"}, 422)
         except Exception as e:
             for p in (original_path, img_path, ann_path):
                 if os.path.exists(p):

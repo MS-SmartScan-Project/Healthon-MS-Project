@@ -235,7 +235,7 @@
 
     let status = ['idle', 'Awaiting image'];
     if (state.busy) status = ['busy', 'Analyzing'];
-    else if (r && r.error) status = [r.code === 'duplicate_image' ? 'amber' : 'red', r.code === 'duplicate_image' ? 'Duplicate rejected' : 'Analysis failed'];
+    else if (r && r.error) status = r.code === 'duplicate_image' ? ['amber', 'Duplicate rejected'] : r.code === 'not_mri' ? ['amber', 'Not an MRI'] : ['red', 'Analysis failed'];
     else if (r) status = [TONE[r.result], LABEL[r.result]];
     else if (showVideo) status = ['ready', 'Live camera'];
     else if (state.image) status = ['ready', 'Ready to analyze'];
@@ -353,6 +353,7 @@
       $('fText').textContent = dup ? d.error + ' The original patient record has not been changed.' : d.error;
       conf.hidden = true; document.querySelector('.f-stats').hidden = true;
       if (dup) tag('Duplicate MRI — rejected', 'amber');
+      if (d.code === 'not_mri') tag('Not an MRI — rejected', 'amber');
       return;
     }
     conf.hidden = false; document.querySelector('.f-stats').hidden = false;
