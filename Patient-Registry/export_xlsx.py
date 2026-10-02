@@ -7,10 +7,11 @@ import zipfile
 from datetime import datetime
 from xml.sax.saxutils import escape
 
-FINDING = {"Infected": "Suspicious lesion", "Uncertain": "Low confidence", "Healthy": "Clear"}
+FINDING = {"Infected": "Suspected MS/SVD", "Uncertain": "Low confidence", "Healthy": "Clear"}
 NEXT_STEP = {
-    "Infected": "Lumbar puncture (CSF: OCBs, κ-FLC); contrast-enhanced MRI of brain & spinal cord",
-    "Uncertain": "Radiologist review first; if MS still suspected: lumbar puncture + contrast-enhanced MRI",
+    "Infected": "Differentiate MS vs SVD: lumbar puncture (CSF OCBs, κ-FLC); contrast-enhanced MRI brain & spinal cord; "
+                "vascular risk assessment (BP, HbA1c, lipids)",
+    "Uncertain": "Radiologist review first; if lesion confirmed: lumbar puncture, contrast-enhanced MRI, vascular risk assessment",
     "Healthy": "No AI-flagged follow-up",
 }
 DISCLAIMER = ("AI-assisted screening results. Final diagnosis requires clinical assessment "

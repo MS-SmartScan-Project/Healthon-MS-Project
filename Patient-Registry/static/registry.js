@@ -94,7 +94,7 @@
     let out = `<line class="base" x1="0" x2="${W}" y1="${base}" y2="${base}"/>`;
     days.forEach((d, i) => {
       const x = i * (bw + gap), h = (d.scans / max) * (base - top), hi = (d.inf / max) * (base - top);
-      if (d.scans) out += `<rect class="bar" x="${x}" y="${base - h}" width="${bw}" height="${h}" rx="3"><title>${d.key}: ${d.scans} scan(s), ${d.inf} suspicious</title></rect>`;
+      if (d.scans) out += `<rect class="bar" x="${x}" y="${base - h}" width="${bw}" height="${h}" rx="3"><title>${d.key}: ${d.scans} scan(s), ${d.inf} suspected MS/SVD</title></rect>`;
       if (d.inf) out += `<rect class="bar-inf" x="${x}" y="${base - hi}" width="${bw}" height="${hi}" rx="3"/>`;
       if (i % 2 === 1 || i === 13) out += `<text x="${x + bw / 2}" y="${H - 2}" text-anchor="middle">${d.label}</text>`;
     });
@@ -128,9 +128,9 @@
     $('dId').textContent = current.id; $('dId').title = current.id;
     $('dModel').textContent = current.inference_version || 'Legacy';
     $('dText').textContent = current.result === 'Infected'
-      ? 'Suspicious lesion detected that may be associated with MS or another demyelinating condition. Recommended diagnostic tests: lumbar puncture (CSF: OCBs, κ-FLC) and contrast-enhanced MRI of the brain and spinal cord.'
-      : current.result === 'Uncertain' ? 'Low-confidence finding below the 70% review threshold. Expert radiology review is recommended first; if MS is still suspected, consider lumbar puncture and contrast-enhanced MRI.'
-        : 'No suspicious MS-related pattern was detected by the current AI screening model.';
+      ? 'White matter lesions detected that may indicate MS or Small Vessel Disease (SVD); MRI alone cannot tell them apart. Tests to differentiate: lumbar puncture (CSF OCBs, κ-FLC), contrast-enhanced MRI of the brain and spinal cord, and vascular risk assessment (blood pressure, HbA1c, lipids).'
+      : current.result === 'Uncertain' ? 'Low-confidence finding below the 70% review threshold. Expert radiology review is recommended first; if a lesion is confirmed, the same tests help differentiate MS from SVD.'
+        : 'No white matter lesion suggestive of MS or SVD was detected by the current AI screening model.';
     $$('#dToggle .seg-btn').forEach((x, i) => x.classList.toggle('on', i === 0));
     modal.classList.add('open');
     modal.querySelector('[data-close]').focus();

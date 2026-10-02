@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MS SmartScan · AI-Assisted MS Lesion Screening</title>
-<meta name="description" content="Doctor-facing AI decision support for detecting MS-related lesions on MRI images. Runs fully on-device.">
+<title>MS SmartScan · AI-Assisted MS / SVD Lesion Screening</title>
+<meta name="description" content="Doctor-facing AI decision support that detects white matter lesions on MRI that may indicate Multiple Sclerosis (MS) or cerebral Small Vessel Disease (SVD).">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230A1630'/%3E%3Cpath d='M16 7.5c-1-1-2.4-1.5-4-1.5-3 0-5 1.7-5 4 0 4.6 10 3 10 7.2C17 19 15 20 12 20c-1.9 0-3.4-.5-4.5-1.5' fill='none' stroke='%2338BDF8' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -46,9 +46,9 @@
   <section class="hero">
     <div class="wrap hero-in">
       <div class="hero-copy">
-        <span class="eyebrow"><i></i> AI clinical decision support · Multiple Sclerosis</span>
-        <h1>Screen MRI scans for <span class="accent">MS-related lesions</span> in seconds.</h1>
-        <p class="lead">MS SmartScan gives neurologists and radiologists a second pair of eyes: it enhances the MRI, localizes suspicious lesions with a trained YOLO11 model, and stores every result in the patient's record — entirely on-device.</p>
+        <span class="eyebrow"><i></i> AI clinical decision support · MS &amp; Small Vessel Disease</span>
+        <h1>Screen MRI scans for <span class="accent">MS / SVD white matter lesions</span> in seconds.</h1>
+        <p class="lead">MS SmartScan gives neurologists and radiologists a second pair of eyes: it localizes white matter lesions that may indicate Multiple Sclerosis (MS) or Small Vessel Disease (SVD), shows the tests that tell them apart, and stores every result in the patient's record.</p>
         <div class="hero-cta">
           <a href="#workspace" class="btn btn-primary btn-lg">
             <svg class="ic" viewBox="0 0 24 24"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M7 12h10"/></svg>
@@ -271,22 +271,29 @@
 
           <div class="card next-step" id="nextStep" hidden>
             <span class="ns-eyebrow">Next clinical step</span>
-            <p class="ns-lead" id="nsLead">Further clinical evaluation is recommended.</p>
+            <p class="ns-lead" id="nsLead">Further evaluation is needed to differentiate MS from SVD.</p>
             <div class="ns-box">
-              <span class="ns-sub" id="nsSub">Recommended diagnostic tests</span>
+              <span class="ns-sub" id="nsSub">Tests that help tell MS and SVD apart</span>
               <ol class="tests">
                 <li>
                   <span class="ns-ic"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/><path d="M7.5 15h9"/></svg></span>
                   <div>
                     <b>Lumbar puncture</b>
-                    <span>CSF analysis for oligoclonal bands (OCBs) and kappa free light chains (κ-FLC).</span>
+                    <span>CSF oligoclonal bands (OCBs) and kappa free light chains (κ-FLC). Positive results support MS; they are not typical of vascular (SVD) lesions.</span>
                   </div>
                 </li>
                 <li>
                   <span class="ns-ic"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="9"/><path d="M12 3v18M8 8c1.5 1 2.5 1 4 0M16 8c-1.5 1-2.5 1-4 0M7 14c2 0 3 1 5 0M17 14c-2 0-3 1-5 0"/></svg></span>
                   <div>
                     <b>Contrast-enhanced MRI — brain &amp; spinal cord</b>
-                    <span>Gadolinium MRI to assess lesion spread in space and time (McDonald criteria).</span>
+                    <span>Spinal cord or enhancing lesions and typical MS locations (corpus callosum, juxtacortical, infratentorial) favour MS. SVD usually spares the spinal cord.</span>
+                  </div>
+                </li>
+                <li>
+                  <span class="ns-ic"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10Z"/><path d="M8 12h2l1-2 2 4 1-2h2"/></svg></span>
+                  <div>
+                    <b>Vascular risk assessment</b>
+                    <span>Blood pressure, HbA1c (blood sugar) and lipid profile. Vascular risk factors support SVD.</span>
                   </div>
                 </li>
               </ol>
@@ -313,7 +320,7 @@
         <div>
           <span class="kicker">Technology</span>
           <h2>From MRI image to clinical insight</h2>
-          <p>A low-cost Raspberry Pi device that brings AI screening to clinics with limited access to MS specialists.</p>
+          <p>A low-cost Raspberry Pi device that brings AI screening for white matter lesions (MS and SVD) to clinics with limited access to neuroradiologists.</p>
         </div>
       </div>
 
@@ -363,7 +370,7 @@
 <footer class="footer">
   <div class="wrap footer-in">
     <img class="footer-logo" src="/static/assets/logo-transparent.webp" alt="MS SmartScan logo" width="988" height="666">
-    <p>AI-assisted MS lesion screening · Technical Digital College for Girls, Riyadh</p>
+    <p>AI-assisted MS / SVD lesion screening · Technical Digital College for Girls, Riyadh</p>
     <p class="fine">Clinical decision-support prototype. Not a medical device. Final diagnosis requires clinical assessment and appropriate diagnostic criteria.</p>
   </div>
 </footer>

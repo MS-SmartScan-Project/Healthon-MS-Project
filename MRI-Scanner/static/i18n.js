@@ -319,6 +319,40 @@
       'تم اكتشاف آفة مشتبهة قد تكون مرتبطة بالتصلب المتعدد أو بحالة أخرى مزيلة للميالين. الفحوصات التشخيصية الموصى بها: البزل القطني (السائل النخاعي: OCBs و κ-FLC) ورنين مغناطيسي بالصبغة للدماغ والحبل الشوكي.',
     'Low-confidence finding below the 70% review threshold. Expert radiology review is recommended first; if MS is still suspected, consider lumbar puncture and contrast-enhanced MRI.':
       'نتيجة منخفضة الثقة أقل من حد المراجعة 70%. يوصى أولاً بمراجعة أخصائي أشعة؛ وإذا استمر الاشتباه بالتصلب المتعدد، يُنظر في البزل القطني والرنين المغناطيسي بالصبغة.',
+    // ---------- MS / SVD wording (the model finds white matter lesions; it cannot tell MS from SVD) ----------
+    'MS SmartScan · AI-Assisted MS / SVD Lesion Screening': 'MS SmartScan · الكشف عن آفات التصلب المتعدد وأمراض الأوعية الصغيرة بمساعدة الذكاء الاصطناعي',
+    'AI clinical decision support · MS & Small Vessel Disease': 'دعم القرار السريري بالذكاء الاصطناعي · التصلب المتعدد وأمراض الأوعية الصغيرة',
+    'MS / SVD white matter lesions': 'آفات المادة البيضاء (التصلب المتعدد / الأوعية الصغيرة)',
+    "MS SmartScan gives neurologists and radiologists a second pair of eyes: it localizes white matter lesions that may indicate Multiple Sclerosis (MS) or Small Vessel Disease (SVD), shows the tests that tell them apart, and stores every result in the patient's record.":
+      'يمنح MS SmartScan أطباء الأعصاب وأخصائيي الأشعة عيناً ثانية: يحدد آفات المادة البيضاء التي قد تدل على التصلب المتعدد (MS) أو أمراض الأوعية الدموية الدماغية الصغيرة (SVD)، ويعرض الفحوصات التي تميّز بينهما، ويحفظ كل نتيجة في سجل المريض.',
+    'Suspected MS/SVD': 'اشتباه MS/SVD',
+    'Suspected MS / SVD': 'اشتباه تصلب متعدد / أمراض الأوعية الصغيرة',
+    'White matter lesions were detected that may indicate Multiple Sclerosis (MS) or cerebral Small Vessel Disease (SVD). MRI appearance alone cannot reliably tell them apart.':
+      'تم اكتشاف آفات في المادة البيضاء قد تدل على التصلب المتعدد (MS) أو أمراض الأوعية الدموية الدماغية الصغيرة (SVD). لا يمكن التمييز بينهما بشكل موثوق من مظهر الرنين وحده.',
+    'The model returned a possible white matter lesion below the 70% review threshold. This result is inconclusive and should not be read as normal or abnormal without expert review.':
+      'رصد النموذج آفة محتملة في المادة البيضاء بثقة أقل من حد المراجعة 70%. هذه النتيجة غير حاسمة ولا ينبغي اعتبارها طبيعية أو غير طبيعية دون مراجعة مختص.',
+    'Below the 70% threshold (marker on the bar) used to report a suspected MS / SVD lesion.': 'أقل من حد 70% (العلامة على الشريط) المستخدم للإبلاغ عن اشتباه تصلب متعدد / أمراض الأوعية الصغيرة.',
+    'No suspicious white matter lesion detected': 'لم تُكتشف آفة مشتبهة في المادة البيضاء',
+    'No white matter lesion suggestive of MS or SVD was detected by the current AI screening model.': 'لم يكتشف نموذج الفحص الحالي أي آفة في المادة البيضاء تشير إلى التصلب المتعدد أو أمراض الأوعية الصغيرة.',
+    'No suspicious lesion': 'لا توجد آفة مشتبهة',
+    'Further evaluation is needed to differentiate MS from SVD.': 'يلزم مزيد من التقييم للتمييز بين التصلب المتعدد وأمراض الأوعية الصغيرة.',
+    'Tests that help tell MS and SVD apart': 'فحوصات تساعد على التمييز بين التصلب المتعدد وأمراض الأوعية الصغيرة',
+    'If a lesion is confirmed on review': 'إذا تأكدت الآفة بعد المراجعة',
+    'CSF oligoclonal bands (OCBs) and kappa free light chains (κ-FLC). Positive results support MS; they are not typical of vascular (SVD) lesions.':
+      'الأشرطة قليلة النسيلة (OCBs) وسلاسل كابا الخفيفة الحرة (κ-FLC) في السائل النخاعي. النتيجة الإيجابية تدعم التصلب المتعدد، وهي غير معتادة في الآفات الوعائية (SVD).',
+    'Spinal cord or enhancing lesions and typical MS locations (corpus callosum, juxtacortical, infratentorial) favour MS. SVD usually spares the spinal cord.':
+      'آفات الحبل الشوكي أو الآفات المعززة بالصبغة والمواقع النموذجية للتصلب المتعدد (الجسم الثفني، بجوار القشرة، تحت الخيمة) ترجّح التصلب المتعدد. أمراض الأوعية الصغيرة عادةً لا تصيب الحبل الشوكي.',
+    'Vascular risk assessment': 'تقييم عوامل الخطر الوعائية',
+    'Blood pressure, HbA1c (blood sugar) and lipid profile. Vascular risk factors support SVD.': 'ضغط الدم، والسكر التراكمي (HbA1c)، وتحليل الدهون. وجود عوامل الخطر الوعائية يدعم أمراض الأوعية الصغيرة.',
+    'A low-cost Raspberry Pi device that brings AI screening for white matter lesions (MS and SVD) to clinics with limited access to neuroradiologists.':
+      'جهاز Raspberry Pi منخفض التكلفة يوفّر فحص آفات المادة البيضاء (التصلب المتعدد وأمراض الأوعية الصغيرة) بالذكاء الاصطناعي للعيادات التي تفتقر إلى أخصائيي أشعة الأعصاب.',
+    'AI-assisted MS / SVD lesion screening · Technical Digital College for Girls, Riyadh': 'الكشف عن آفات التصلب المتعدد وأمراض الأوعية الصغيرة بمساعدة الذكاء الاصطناعي · الكلية التقنية الرقمية للبنات بالرياض',
+    'Patient Registry · AI-assisted MS / SVD lesion screening · Technical Digital College for Girls, Riyadh':
+      'سجل المرضى · الكشف عن آفات التصلب المتعدد وأمراض الأوعية الصغيرة بمساعدة الذكاء الاصطناعي · الكلية التقنية الرقمية للبنات بالرياض',
+    'White matter lesions detected that may indicate MS or Small Vessel Disease (SVD); MRI alone cannot tell them apart. Tests to differentiate: lumbar puncture (CSF OCBs, κ-FLC), contrast-enhanced MRI of the brain and spinal cord, and vascular risk assessment (blood pressure, HbA1c, lipids).':
+      'تم اكتشاف آفات في المادة البيضاء قد تدل على التصلب المتعدد أو أمراض الأوعية الصغيرة (SVD)، ولا يمكن التمييز بينهما من الرنين وحده. فحوصات التمييز: البزل القطني (OCBs و κ-FLC في السائل النخاعي)، ورنين مغناطيسي بالصبغة للدماغ والحبل الشوكي، وتقييم عوامل الخطر الوعائية (ضغط الدم، السكر التراكمي، الدهون).',
+    'Low-confidence finding below the 70% review threshold. Expert radiology review is recommended first; if a lesion is confirmed, the same tests help differentiate MS from SVD.':
+      'نتيجة منخفضة الثقة أقل من حد المراجعة 70%. يوصى أولاً بمراجعة أخصائي أشعة؛ وإذا تأكدت الآفة، تساعد الفحوصات نفسها على التمييز بين التصلب المتعدد وأمراض الأوعية الصغيرة.',
     's': 'ث',
   };
 
@@ -338,7 +372,7 @@
     [/^Medical no\. (.+)$/, (m) => `الرقم الطبي ${m[1]}`],
     [/^Camera (\d+)$/, (m) => `كاميرا ${m[1]}`],
     [/^(\d+) × (\d+) px(?: · ([\d.]+) MB)?$/, (m) => `${m[1]} × ${m[2]} بكسل${m[3] ? ` · ${m[3]} ميجابايت` : ''}`],
-    [/^(\d{4}-\d{2}-\d{2}): (\d+) scan\(s\), (\d+) suspicious$/, (m) => `${m[1]}: ${m[2]} فحص، ${m[3]} مشتبه`],
+    [/^(\d{4}-\d{2}-\d{2}): (\d+) scan\(s\), (\d+) suspected MS\/SVD$/, (m) => `${m[1]}: ${m[2]} فحص، ${m[3]} اشتباه MS/SVD`],
   ];
 
   function translate(text) {

@@ -3,7 +3,7 @@ window.MSS = (() => {
   const $ = (id) => document.getElementById(id);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
-  const LABEL = { Infected: 'Suspicious lesion', Uncertain: 'Low confidence', Healthy: 'Clear' };
+  const LABEL = { Infected: 'Suspected MS/SVD', Uncertain: 'Low confidence', Healthy: 'Clear' };
   const TONE = { Infected: 'red', Uncertain: 'amber', Healthy: 'green' };
   const ICON = {
     alert: '<svg viewBox="0 0 24 24"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17.5v.01"/></svg>',

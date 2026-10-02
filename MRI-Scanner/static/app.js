@@ -365,26 +365,27 @@
     const ns = els.nextStep;
     if (d.result === 'Infected') {
       f.dataset.tone = 'red'; $('fIcon').innerHTML = ICON.alert;
-      $('fTitle').textContent = 'Suspicious lesion detected';
-      $('fText').textContent = 'A lesion was detected in the MRI image that may be associated with Multiple Sclerosis (MS) or another demyelinating condition.';
+      // The model finds white matter lesions but cannot tell MS from small vessel disease (SVD) — see README
+      $('fTitle').textContent = 'Suspected MS / SVD';
+      $('fText').textContent = 'White matter lesions were detected that may indicate Multiple Sclerosis (MS) or cerebral Small Vessel Disease (SVD). MRI appearance alone cannot reliably tell them apart.';
       $('fConfNote').textContent = 'Highest confidence among the lesion regions returned by the model.';
-      $('nsLead').textContent = 'Further clinical evaluation is recommended.';
-      $('nsSub').textContent = 'Recommended diagnostic tests';
-      ns.hidden = false; tag('Suspicious lesion', 'red');
+      $('nsLead').textContent = 'Further evaluation is needed to differentiate MS from SVD.';
+      $('nsSub').textContent = 'Tests that help tell MS and SVD apart';
+      ns.hidden = false; tag('Suspected MS / SVD', 'red');
     } else if (d.result === 'Uncertain') {
       f.dataset.tone = 'amber'; $('fIcon').innerHTML = ICON.alert;
       $('fTitle').textContent = 'Low-confidence finding';
-      $('fText').textContent = 'The model returned a possible lesion below the 70% review threshold. This result is inconclusive and should not be read as normal or abnormal without expert review.';
-      $('fConfNote').textContent = 'Below the 70% threshold (marker on the bar) used to report a suspicious lesion.';
+      $('fText').textContent = 'The model returned a possible white matter lesion below the 70% review threshold. This result is inconclusive and should not be read as normal or abnormal without expert review.';
+      $('fConfNote').textContent = 'Below the 70% threshold (marker on the bar) used to report a suspected MS / SVD lesion.';
       $('nsLead').textContent = 'Expert radiology review of this MRI is recommended first.';
-      $('nsSub').textContent = 'If clinical suspicion of MS remains after review';
+      $('nsSub').textContent = 'If a lesion is confirmed on review';
       ns.hidden = false; tag('Low-confidence finding', 'amber');
     } else {
       f.dataset.tone = 'green'; $('fIcon').innerHTML = ICON.check;
-      $('fTitle').textContent = 'No suspicious MS-related pattern detected';
-      $('fText').textContent = 'No suspicious MS-related pattern was detected by the current AI screening model.';
+      $('fTitle').textContent = 'No suspicious white matter lesion detected';
+      $('fText').textContent = 'No white matter lesion suggestive of MS or SVD was detected by the current AI screening model.';
       $('fConfNote').textContent = 'The model returned no lesion regions, so no confidence score is reported.';
-      ns.hidden = true; tag('No suspicious pattern', 'green');
+      ns.hidden = true; tag('No suspicious lesion', 'green');
     }
     $('rsInfo').textContent = `${normName(els.name.value)} · #${normId(els.id.value)} · ${fmtDate(d.created_at)}`;
     els.recordSaved.hidden = false;
