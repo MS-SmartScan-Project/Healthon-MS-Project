@@ -21,8 +21,9 @@ DISCLAIMER = ("AI-assisted screening results. Final diagnosis requires clinical 
 COLUMNS = [
     ("Scan date & time", 19), ("Patient name", 26), ("Medical number", 17), ("AI finding", 18),
     ("AI confidence", 14), ("Regions flagged", 15), ("Recommended next step", 58),
-    ("Analysis time (s)", 16), ("Scan ID", 44),
+    ("Analysis time (s)", 16), ("Doctor", 24), ("Scan ID", 44),
 ]
+LAST_COL = "ABCDEFGHIJ"[len(COLUMNS) - 1]
 
 # style indexes in styles.xml <cellXfs>
 # index 0 is Excel's default for blank cells, so it must stay borderless
@@ -96,7 +97,7 @@ ROOT_RELS = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 WORKBOOK = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
 <sheets><sheet name="Scan registry" sheetId="1" r:id="rId1"/></sheets>
-<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'Scan registry'!$A$4:$I${last}</definedName>
+<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'Scan registry'!$A$4:${lastcol}${last}</definedName>
 <definedName name="_xlnm.Print_Titles" localSheetId="0">'Scan registry'!$4:$4</definedName></definedNames>
 </workbook>"""
 
@@ -137,11 +138,16 @@ def _num(ref, value, style):
     return f'<c r="{ref}" s="{style}"><v>{value}</v></c>'
 
 
-def build(rows, filter_label="All results", query=""):
-    """rows: dicts from the scans table, newest first. Returns .xlsx bytes."""
+def build(rows, filter_label="All results", query="", exported_by="", scope=""):
+    """rows: dicts from the scans table (with the owning doctor's name as "owner"), newest first. Returns .xlsx bytes."""
     now = datetime.now()
     out = []
-    subtitle = f"Exported {now.strftime('%d %b %Y, %H:%M')}  ·  {len(rows)} scan{'s' if len(rows) != 1 else ''}  ·  Filter: {filter_label}"
+    subtitle = f"Exported {now.strftime('%d %b %Y, %H:%M')}"
+    if exported_by:
+        subtitle += f" by {exported_by}"
+    if scope:
+        subtitle += f"  ·  {scope}"
+    subtitle += f"  ·  {len(rows)} scan{'s' if len(rows) != 1 else ''}  ·  Filter: {filter_label}"
     if query:
         subtitle += f'  ·  Search: "{query}"'
     out.append(f'<row r="1" ht="26" customHeight="1">{_text("A1", "MS SmartScan — Scan Registry", S_TITLE)}</row>')
@@ -164,7 +170,8 @@ def build(rows, filter_label="All results", query=""):
             _num(f"F{r}", s.get("lesions"), S_INT),
             _text(f"G{r}", NEXT_STEP.get(result, "—")),
             _num(f"H{r}", s.get("seconds"), S_SEC),
-            _text(f"I{r}", s.get("id", ""), S_MONO),
+            _text(f"I{r}", s.get("owner") or "Unassigned (before sign-in)"),
+            _text(f"J{r}", s.get("id", ""), S_MONO),
         ]
         out.append(f'<row r="{r}" ht="20" customHeight="1">{"".join(cells)}</row>')
     last = max(r, 5)
@@ -177,14 +184,15 @@ def build(rows, filter_label="All results", query=""):
         '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
         'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
         '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>'
-        f'<dimension ref="A1:I{note_row}"/>'
+        f'<dimension ref="A1:{LAST_COL}{note_row}"/>'
         '<sheetViews><sheetView workbookViewId="0" showGridLines="0">'
         '<pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
         '<sheetFormatPr defaultRowHeight="15"/>'
         f"<cols>{cols}</cols>"
         f'<sheetData>{"".join(out)}</sheetData>'
-        f'<autoFilter ref="A4:I{last}"/>'
-        f'<mergeCells count="3"><mergeCell ref="A1:I1"/><mergeCell ref="A2:I2"/><mergeCell ref="A{note_row}:I{note_row}"/></mergeCells>'
+        f'<autoFilter ref="A4:{LAST_COL}{last}"/>'
+        f'<mergeCells count="3"><mergeCell ref="A1:{LAST_COL}1"/><mergeCell ref="A2:{LAST_COL}2"/>'
+        f'<mergeCell ref="A{note_row}:{LAST_COL}{note_row}"/></mergeCells>'
         '<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>'
         '<pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/>'
         "</worksheet>"
@@ -195,7 +203,7 @@ def build(rows, filter_label="All results", query=""):
         z.writestr("[Content_Types].xml", CONTENT_TYPES)
         z.writestr("_rels/.rels", ROOT_RELS)
         z.writestr("docProps/core.xml", CORE.format(now=now.strftime("%Y-%m-%dT%H:%M:%SZ")))
-        z.writestr("xl/workbook.xml", WORKBOOK.replace("{last}", str(last)))
+        z.writestr("xl/workbook.xml", WORKBOOK.replace("{last}", str(last)).replace("{lastcol}", LAST_COL))
         z.writestr("xl/_rels/workbook.xml.rels", WORKBOOK_RELS)
         z.writestr("xl/styles.xml", STYLES)
         z.writestr("xl/worksheets/sheet1.xml", sheet)

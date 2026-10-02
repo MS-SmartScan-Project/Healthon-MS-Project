@@ -4,6 +4,9 @@ MS SmartScan — موقع الفحص (MRI Scanner)
 
 يحلل صور الرنين بالذكاء الاصطناعي ويحفظ النتيجة في قاعدة البيانات المشتركة (../data).
 هذا الموقع يرسل الفحوصات فقط — لا يعرض السجل. السجل في موقع مستقل: ../Patient-Registry
+كل فحص يحتاج رمز الطبيب (PIN)؛ السيرفر يتحقق منه ويحفظ الطبيب كصاحب للفحص وللمريض الجديد.
+
+فك القفل بعد 3 رموز خاطئة (من طرفية هذا الجهاز فقط):  python server.py --reset-lockout
 """
 import base64
 import hashlib
@@ -31,6 +34,7 @@ try:
     import detector
 except ImportError as error:
     sys.exit(f"Missing dependency: {error.name}. Run: python -m pip install -r requirements.txt")
+import auth
 
 # ---------------- الإعدادات ----------------
 PORT = 8000
@@ -40,6 +44,8 @@ MAX_IMAGE_PIXELS = 25_000_000
 CSRF_TOKEN = secrets.token_urlsafe(32)
 RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_REQUESTS = 30
+AUTH_RATE_LIMIT = 10     # تحقق من الرمز في الدقيقة (إضافة إلى القفل بعد 3 رموز خاطئة)
+SITE = "scanner"
 INFERENCE_VERSION = "yolo26s-mslesseg-photo-v7"   # v7: MRI gate (mri_gate.pt) + YOLO26s, MSLesSeg FLAIR + simulated camera photos, conf 0.25, 640 px
 MEDICAL_NUMBER_RE = re.compile(r"[A-Z0-9][A-Z0-9\-_/.]{0,29}")
 _request_times = defaultdict(deque)
@@ -50,7 +56,7 @@ mimetypes.add_type("image/webp", ".webp")   # إصدارات بايثون الق
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(BASE, "static")
-DATA = os.path.join(os.path.dirname(BASE), "data")   # قاعدة البيانات المشتركة بين الموقعين
+DATA = os.environ.get("MSS_DATA_DIR") or os.path.join(os.path.dirname(BASE), "data")   # قاعدة البيانات المشتركة بين الموقعين
 IMAGES = os.path.join(DATA, "images")
 BACKUPS = os.path.join(DATA, "backups")
 DB_PATH = os.path.join(DATA, "smartscan.db")
@@ -102,6 +108,10 @@ with db() as con:
         name            TEXT NOT NULL,
         created_at      TEXT NOT NULL
     )""")
+
+# حسابات الأطباء + عمود صاحب السجل (owner_doctor_id). السجلات القديمة تبقى بدون صاحب ولا تُنسب لأحد.
+AUTH = auth.AuthStore(DB_PATH, DATA)
+AUTH.migrate()
 
 
 def normalize_medical_number(value):
@@ -184,18 +194,25 @@ backup_database()
 migrate_existing_records()
 
 
-def row_to_dict(r):
-    d = dict(r)
-    try:
-        d["boxes"] = json.loads(d["boxes"] or "[]")
-    except (TypeError, json.JSONDecodeError):
-        d["boxes"] = []
-    d["image"] = f"/media/{d['id']}.png"
-    d["annotated"] = f"/media/{d['id']}_boxes.png"
-    original_path = os.path.join(IMAGES, d["id"] + "_original.png")
-    d["original"] = f"/media/{d['id']}_original.png" if os.path.isfile(original_path) else d["image"]
-    d["media_available"] = os.path.isfile(os.path.join(IMAGES, d["id"] + ".png"))
+def data_url(path):
+    with open(path, "rb") as f:
+        return "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
+
+
+def scan_response(rec, image_paths):
+    """Result for the doctor who just submitted it. The images are embedded in the response,
+    so this site has no address that serves stored MRI files."""
+    d = {k: v for k, v in rec.items() if k not in ("source_sha256", "pixel_sha256", "owner_doctor_id")}
+    d["boxes"] = json.loads(d["boxes"] or "[]")
+    for key, path in image_paths.items():
+        d[key] = data_url(path)
     return d
+
+
+def lock_payload(locked_until):
+    return {"error": "Too many incorrect PINs. PIN entry on the MRI Scanner is locked for 24 hours.",
+            "code": "locked", "title": "PIN entry locked",
+            "locked_until": datetime.fromtimestamp(locked_until).astimezone().isoformat(timespec="seconds")}
 
 
 # ---------------- الطلبات ----------------
@@ -208,7 +225,7 @@ class Handler(BaseHTTPRequestHandler):
         self.connection.settimeout(20)
 
     def log_message(self, fmt, *args):   # سجل مختصر في الطرفية
-        if "/api/" in self.path:
+        if "/api/" in getattr(self, "path", ""):   # absent when the connection timed out before sending a request
             sys.stdout.write("  %s  %s\n" % (datetime.now().strftime("%H:%M:%S"), self.requestline))
 
     def end_headers(self):
@@ -245,14 +262,14 @@ class Handler(BaseHTTPRequestHandler):
     def request_allowed(self):
         return self.client_allowed() and self.host_allowed() and self.origin_allowed()
 
-    def rate_limited(self):
+    def rate_limited(self, bucket="api", limit=RATE_LIMIT_REQUESTS):
         now = time.monotonic()
-        key = self.client_address[0]
+        key = (bucket, self.client_address[0])
         with _rate_lock:
             times = _request_times[key]
             while times and now - times[0] > RATE_LIMIT_WINDOW:
                 times.popleft()
-            if len(times) >= RATE_LIMIT_REQUESTS:
+            if len(times) >= limit:
                 return True
             times.append(now)
             return False
@@ -281,7 +298,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
-        is_private_media = os.path.commonpath((os.path.realpath(path), os.path.realpath(IMAGES))) == os.path.realpath(IMAGES)
+        is_private_media = os.path.realpath(path).startswith(os.path.realpath(IMAGES) + os.sep)
         self.send_header("Cache-Control", "no-store" if is_private_media else "no-cache")
         self.end_headers()
         self.wfile.write(body)
@@ -295,8 +312,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_file(os.path.join(STATIC, "index.html"))
         if path.startswith("/static/"):
             return self.send_file(safe_join(STATIC, path[len("/static/"):]))
-        if path.startswith("/media/"):
-            return self.send_file(safe_join(IMAGES, path[len("/media/"):]))
+        # لا يوجد /media/ هنا: صور الفحص تُرسل مع نتيجة الطبيب فقط، ولا يمكن طلب أي صورة محفوظة من هذا الموقع
         if path == "/api/status":
             return self.send_json({**detector.status(), "min_confidence": MIN_CONFIDENCE,
                                    "csrf_token": CSRF_TOKEN})
@@ -340,9 +356,16 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, TypeError, json.JSONDecodeError, Base64Error):
             return self.send_json({"error": "Invalid request data."}, 400)
 
-        # بيانات المريض إلزامية: الاسم والرقم الطبي
+        # أثناء القفل يُرفض كل شيء، حتى الرمز الصحيح
+        locked = AUTH.locked_until(SITE)
+        if locked:
+            audit("analyze", None, "pin-locked")
+            return self.send_json(lock_payload(locked), 423)
+
+        # بيانات المريض إلزامية: الاسم والرقم الطبي، ورمز الطبيب
         patient = normalize_name(payload.get("patient"))[:80]
         patient_id = normalize_medical_number(payload.get("patient_id"))
+        pin = auth.normalize_pin(payload.get("pin"))
         fields = {}
         if not patient:
             fields["patient"] = "Patient name is required."
@@ -350,12 +373,34 @@ class Handler(BaseHTTPRequestHandler):
             fields["patient_id"] = "Medical number is required."
         elif not MEDICAL_NUMBER_RE.fullmatch(patient_id):
             fields["patient_id"] = "Use letters, digits, - _ / . only (maximum 30 characters)."
+        if not pin:
+            fields["pin"] = "Doctor PIN is required."
+        elif not auth.valid_pin(pin):   # صيغة خاطئة: تُرفض ولا تُحتسب محاولة
+            fields["pin"] = "PIN must be exactly 4 letters or digits (A–Z, 0–9)."
         if fields:
-            return self.send_json({"error": "Required patient information is missing.",
+            only_pin = set(fields) == {"pin"}
+            return self.send_json({"error": "Enter your 4-character doctor PIN." if only_pin else "Required patient information is missing.",
                                    "code": "validation", "fields": fields}, 422)
 
         if not detector.status()["ready"]:
             return self.send_json({"error": "The AI model is still loading. Please wait a moment and try again."}, 503)
+
+        # هوية الطبيب يحددها السيرفر من الرمز فقط — لا يُقبل أي معرّف طبيب من المتصفح
+        if self.rate_limited("auth", AUTH_RATE_LIMIT):
+            return self.send_json({"error": "Too many requests. Please wait a minute and try again."}, 429)
+        check = AUTH.sign_in(SITE, pin)
+        if check["status"] == "locked":
+            audit("analyze", None, "pin-locked")
+            return self.send_json(lock_payload(check["locked_until"]), 423)
+        if check["status"] == "wrong":
+            audit("analyze", None, "wrong-pin")
+            return self.send_json({"error": "Incorrect PIN.", "code": "wrong_pin", "title": "Incorrect doctor PIN",
+                                   "attempts_left": check["attempts_left"], "fields": {"pin": "Incorrect PIN."}}, 401)
+        doctor = check["doctor"]
+        if check["status"] == "disabled":
+            audit("analyze", str(doctor["id"]), "account-disabled")
+            return self.send_json({"error": "This doctor account is disabled. Contact the department head.",
+                                   "code": "account_disabled", "title": "Account disabled"}, 403)
 
         image = cv2.imdecode(np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
         if image is None or image.ndim not in (2, 3):
@@ -439,6 +484,7 @@ class Handler(BaseHTTPRequestHandler):
             "source_sha256": source_sha256,
             "pixel_sha256": pixel_sha256,
             "inference_version": INFERENCE_VERSION,
+            "owner_doctor_id": doctor["id"],
         }
 
         def discard_files():
@@ -454,24 +500,26 @@ class Handler(BaseHTTPRequestHandler):
                     discard_files()
                     return self.send_json(rejected, 409)
                 with db() as con:
-                    con.execute("INSERT OR IGNORE INTO patients (medical_number, name, created_at) VALUES (?, ?, ?)",
-                                (patient_id, patient, rec["created_at"]))
+                    # مريض جديد يُسجَّل باسم هذا الطبيب؛ المريض الموجود يحتفظ بصاحبه الأصلي
+                    con.execute("INSERT OR IGNORE INTO patients (medical_number, name, created_at, owner_doctor_id) "
+                                "VALUES (?, ?, ?, ?)", (patient_id, patient, rec["created_at"], doctor["id"]))
                     # الاسم المسجّل للمريض (نفس الاسم بحروف مختلفة الحجم يُحفظ بصيغته الأصلية)
                     rec["patient"] = con.execute("SELECT name FROM patients WHERE medical_number = ?",
                                                  (patient_id,)).fetchone()["name"]
                     con.execute("""INSERT INTO scans
                         (id, created_at, patient, patient_id, result, confidence, raw_result, lesions, boxes, seconds,
-                         source_sha256, inference_version, pixel_sha256)
+                         source_sha256, inference_version, pixel_sha256, owner_doctor_id)
                         VALUES (:id,:created_at,:patient,:patient_id,:result,:confidence,:raw_result,:lesions,:boxes,
-                                :seconds,:source_sha256,:inference_version,:pixel_sha256)""", rec)
+                                :seconds,:source_sha256,:inference_version,:pixel_sha256,:owner_doctor_id)""", rec)
         except sqlite3.Error as error:
             discard_files()
             sys.stderr.write(f"Database write failed for {scan_id}: {error}\n")
             audit("analyze", scan_id, "database-failed")
             return self.send_json({"error": "The scan result could not be saved."}, 500)
-        audit("analyze", scan_id, result)
-        data = row_to_dict(rec)
+        audit("analyze", scan_id, f"{result}; doctor {doctor['id']}")
+        data = scan_response(rec, {"image": img_path, "annotated": ann_path, "original": original_path})
         data["uncertain"] = uncertain
+        data["doctor"] = doctor["name"]
         return self.send_json(data)
 
 def safe_join(root, rel):
@@ -480,6 +528,14 @@ def safe_join(root, rel):
 
 
 def main():
+    global PORT
+    if "--reset-lockout" in sys.argv:   # استرجاع إداري: يحتاج الوصول لطرفية الجهاز نفسه
+        AUTH.reset_lockout(SITE)
+        audit("lockout-reset", SITE, "ok")
+        print("  MRI Scanner PIN lockout cleared.")
+        return
+    if "--port" in sys.argv:
+        PORT = int(sys.argv[sys.argv.index("--port") + 1])
     server = None
     for p in range(PORT, PORT + 10):   # لو المنفذ مشغول نجرب اللي بعده
         try:
@@ -501,7 +557,7 @@ def main():
     print("  -----------------------------")
     print(f"  Website:  {url}")
     print("  Stop:     Ctrl + C\n")
-    print("  Loading AI model ...")
+    print("  Loading AI model ...", flush=True)
 
     def boot():
         ok = detector.load_model()

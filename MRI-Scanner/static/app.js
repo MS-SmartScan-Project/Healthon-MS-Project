@@ -1,12 +1,14 @@
 /* MS SmartScan — MRI Scanner (results are saved to the Patient Registry automatically) */
 (() => {
   // The Scanner never reads the registry: it only submits scans. Records are viewed on the separate Patient Registry site.
-  const { $, $$, LABEL, TONE, ICON, esc, fmtDate, pct, wait, toast, chrome } = window.MSS;
+  const { $, $$, LABEL, TONE, ICON, esc, fmtDate, pct, wait, toast, normPin, pinError, authMessage, chrome } = window.MSS;
+  const PIN_CODES = ['wrong_pin', 'locked', 'account_disabled'];
   window.name = 'mss-scanner';   // the Registry's "MRI Scanner" link reuses this window
 
   const els = {
     name: $('patient'), id: $('patientId'), fName: $('fName'), fId: $('fId'),
     nameErr: $('patientErr'), idErr: $('patientIdErr'),
+    pin: $('doctorPin'), fPin: $('fPin'), pinErr: $('doctorPinErr'),
     drop: $('dropZone'), fileInput: $('fileInput'), cameraPanel: $('cameraPanel'), camSelect: $('camSelect'),
     startCam: $('startCam'), fileChip: $('fileChip'), imageErr: $('imageErr'),
     analyze: $('analyzeBtn'), after: $('afterActions'),
@@ -46,11 +48,13 @@
     if (!name) errs.patient = 'Patient name is required.';
     if (!id) errs.patient_id = 'Medical number is required.';
     else if (!/^[A-Z0-9][A-Z0-9\-_/.]{0,29}$/.test(id)) errs.patient_id = 'Use letters, digits, - _ / . only (maximum 30 characters).';
+    const pin = pinError(normPin(els.pin.value));
+    if (pin) errs.pin = pin;
     return errs;
   }
 
   function showFieldErrors(errs, { focus = false } = {}) {
-    const pairs = [['patient', els.fName, els.nameErr, els.name], ['patient_id', els.fId, els.idErr, els.id]];
+    const pairs = [['patient', els.fName, els.nameErr, els.name], ['patient_id', els.fId, els.idErr, els.id], ['pin', els.fPin, els.pinErr, els.pin]];
     let first = null;
     pairs.forEach(([key, wrap, errEl, input]) => {
       const msg = errs[key] || '';
@@ -69,15 +73,22 @@
   let touched = false;
   function onPatientInput() {
     if (touched) showFieldErrors(fieldErrors());
-    else [[els.fName, els.name], [els.fId, els.id]].forEach(([w, i]) => w.classList.toggle('valid', !!i.value.trim()));
+    else [[els.fName, els.name], [els.fId, els.id], [els.fPin, els.pin]].forEach(([w, i]) => w.classList.toggle('valid', !!i.value.trim()));
     updateUI();
   }
-  [els.name, els.id].forEach((i) => {
+  [els.name, els.id, els.pin].forEach((i) => {
     i.addEventListener('input', onPatientInput);
     i.addEventListener('blur', () => { if (i.value.trim()) { touched = true; showFieldErrors(fieldErrors()); } });
   });
+  els.pin.addEventListener('input', () => { const up = els.pin.value.toUpperCase(); if (up !== els.pin.value) els.pin.value = up; });
   $('patientForm').addEventListener('submit', (e) => { e.preventDefault(); runAnalysis(); });
-  els.id.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runAnalysis(); } });
+  [els.id, els.pin].forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runAnalysis(); } }));
+
+  // The PIN is never kept: it is cleared after every submission
+  function clearPin() {
+    els.pin.value = '';
+    els.fPin.classList.remove('valid');
+  }
 
   /* ================= Image source ================= */
   $$('#sourceCard .seg-btn').forEach((b) => b.addEventListener('click', () => {
@@ -170,7 +181,7 @@
     if (!state.result || b.disabled) return;
     state.view = b.dataset.view;
     $$('#viewToggle .seg-btn').forEach((x) => x.classList.toggle('on', x === b));
-    els.preview.src = state.result[state.view] + '?t=' + Date.now();
+    els.preview.src = state.result[state.view];   // images arrive inside the result (this site serves no stored MRI files)
   }));
 
   function applyZoom() {
@@ -199,7 +210,7 @@
 
   function updateUI() {
     const errs = fieldErrors();
-    const patientOk = !errs.patient && !errs.patient_id;
+    const patientOk = !errs.patient && !errs.patient_id;   // the PIN is checked when the analysis is submitted
     const hasInput = state.mode === 'camera' ? (!!state.stream || !!state.image) : !!state.image;
     const r = state.result;
 
@@ -235,14 +246,15 @@
 
     let status = ['idle', 'Awaiting image'];
     if (state.busy) status = ['busy', 'Analyzing'];
-    else if (r && r.error) status = r.code === 'duplicate_image' ? ['amber', 'Duplicate rejected'] : r.code === 'not_mri' ? ['amber', 'Not an MRI'] : ['red', 'Analysis failed'];
+    else if (r && r.error) status = r.code === 'duplicate_image' ? ['amber', 'Duplicate rejected'] : r.code === 'not_mri' ? ['amber', 'Not an MRI']
+      : PIN_CODES.includes(r.code) ? ['amber', 'PIN rejected'] : ['red', 'Analysis failed'];
     else if (r) status = [TONE[r.result], LABEL[r.result]];
     else if (showVideo) status = ['ready', 'Live camera'];
     else if (state.image) status = ['ready', 'Ready to analyze'];
     els.scanStatus.dataset.tone = status[0]; els.scanStatus.textContent = status[1];
 
     const mA = $('mAnalysis'), mR = $('mResult'), mC = $('mConfidence');
-    mA.textContent = state.busy ? 'In progress' : r ? (r.error ? (r.code === 'duplicate_image' ? 'Rejected' : 'Failed') : `Complete · ${r.seconds}s`) : 'Not started';
+    mA.textContent = state.busy ? 'In progress' : r ? (r.error ? (r.code === 'duplicate_image' || PIN_CODES.includes(r.code) ? 'Rejected' : 'Failed') : `Complete · ${r.seconds}s`) : 'Not started';
     mR.className = ''; mC.className = '';
     if (r && !r.error) {
       mR.textContent = LABEL[r.result]; mR.className = 't-' + TONE[r.result];
@@ -306,8 +318,9 @@
     try {
       const req = fetch('/api/analyze', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': state.csrf },
-        body: JSON.stringify({ image, patient: normName(els.name.value), patient_id: normId(els.id.value) }),
+        body: JSON.stringify({ image, patient: normName(els.name.value), patient_id: normId(els.id.value), pin: normPin(els.pin.value) }),
       });
+      clearPin();
       progress('infer');
       const res = await req;
       const type = res.headers.get('content-type') || '';
@@ -323,9 +336,10 @@
     state.busy = false;
     els.scanline.hidden = true; els.busy.hidden = true;
     state.result = data;
+    if (PIN_CODES.includes(data.code)) data.fields = { pin: authMessage(data) };
     if (data.fields) { showFieldErrors(data.fields, { focus: true }); }
     if (!data.error) {
-      els.preview.src = data.annotated + '?t=' + Date.now();
+      els.preview.src = data.annotated;
       await loadStats();
     }
     showResult(data);
@@ -345,15 +359,17 @@
     const f = els.finding; f.dataset.state = 'done';
     const conf = $('confBlock');
     if (d.error) {
-      const dup = d.code === 'duplicate_image', mismatch = d.code === 'patient_mismatch';
-      f.dataset.tone = dup || mismatch ? 'amber' : 'gray';
-      $('fEyebrow').textContent = dup ? 'Upload rejected' : mismatch ? 'Patient check' : 'Analysis not completed';
-      $('fIcon').innerHTML = dup ? ICON.copy : ICON.info;
+      const dup = d.code === 'duplicate_image', mismatch = d.code === 'patient_mismatch', pin = PIN_CODES.includes(d.code);
+      f.dataset.tone = dup || mismatch || pin ? 'amber' : 'gray';
+      $('fEyebrow').textContent = dup ? 'Upload rejected' : mismatch ? 'Patient check' : pin ? 'Doctor verification' : 'Analysis not completed';
+      $('fIcon').innerHTML = dup ? ICON.copy : pin ? ICON.alert : ICON.info;
       $('fTitle').textContent = d.title || (mismatch ? 'Medical number conflict' : d.code === 'validation' ? 'Missing information' : 'Analysis could not run');
-      $('fText').textContent = dup ? d.error + ' The original patient record has not been changed.' : d.error;
+      $('fText').textContent = dup ? d.error + ' The original patient record has not been changed.'
+        : pin ? authMessage(d) + ' Nothing was analyzed or saved.' : d.error;
       conf.hidden = true; document.querySelector('.f-stats').hidden = true;
       if (dup) tag('Duplicate MRI — rejected', 'amber');
       if (d.code === 'not_mri') tag('Not an MRI — rejected', 'amber');
+      if (pin) tag('PIN rejected', 'amber');
       return;
     }
     conf.hidden = false; document.querySelector('.f-stats').hidden = false;
@@ -391,15 +407,15 @@
       $('fConfNote').textContent = 'The model returned no lesion regions, so no confidence score is reported.';
       ns.hidden = true; tag('Normal', 'green');
     }
-    $('rsInfo').textContent = `${normName(els.name.value)} · #${normId(els.id.value)} · ${fmtDate(d.created_at)}`;
+    $('rsInfo').textContent = `${normName(els.name.value)} · #${normId(els.id.value)} · ${fmtDate(d.created_at)} · ${d.doctor}`;
     els.recordSaved.hidden = false;
   }
 
   $('newImageBtn').addEventListener('click', () => { if (state.busy) return; clearImage(); if (state.mode === 'upload') els.fileInput.click(); });
   $('newPatientBtn').addEventListener('click', () => {
     if (state.busy) return;
-    els.name.value = ''; els.id.value = ''; touched = false;
-    showFieldErrors({}); [els.fName, els.fId].forEach((w) => w.classList.remove('valid'));
+    els.name.value = ''; els.id.value = ''; clearPin(); touched = false;
+    showFieldErrors({}); [els.fName, els.fId, els.fPin].forEach((w) => w.classList.remove('valid'));
     clearImage(); els.name.focus();
   });
 

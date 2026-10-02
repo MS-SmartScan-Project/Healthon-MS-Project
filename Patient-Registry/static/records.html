@@ -20,6 +20,7 @@
     </a>
     <nav class="topnav" aria-label="Sites">
       <a href="/" class="active">Patient Registry</a>
+      <a href="#doctors" id="navDoctors" hidden>Doctors</a>
       <a href="http://localhost:8000" target="mss-scanner" data-scanner-link class="nav-site" title="Open the MRI Scanner (separate site)">
         MRI Scanner
         <svg class="ic" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
@@ -34,22 +35,52 @@
         <svg class="ic" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         On-device
       </span>
-      <span class="model-chip live-chip" id="liveChip" data-state="connecting" role="status" title="Receives new scans from the MRI Scanner automatically"><i></i><span>Connecting…</span></span>
-      <div class="clinician" title="Clinician workstation">
-        <span class="avatar">DR</span>
-        <span class="clinician-text"><b>Clinician</b><small>Neurology · Radiology</small></span>
+      <span class="model-chip live-chip" id="liveChip" data-state="connecting" role="status" title="Receives new scans from the MRI Scanner automatically" hidden><i></i><span>Connecting…</span></span>
+      <div class="clinician" id="whoami" title="Signed-in doctor" hidden>
+        <span class="avatar" id="whoInitials" data-no-i18n>DR</span>
+        <span class="clinician-text"><b id="whoName" data-no-i18n></b><small><span id="whoRole">Doctor</span> · <span id="whoDept">Neurology</span></small></span>
       </div>
+      <button class="btn btn-sm btn-ghost-light" id="signOutBtn" type="button" title="Sign out of the Patient Registry" aria-label="Sign out" hidden>
+        <svg class="ic" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/></svg>
+        <span class="lbl">Sign out</span>
+      </button>
     </div>
   </div>
 </header>
 
 <main id="top">
+  <!-- ============ PIN sign-in (shown before any patient data) ============ -->
+  <section class="auth-screen" id="authScreen" hidden>
+    <div class="wrap">
+      <form class="card auth-card" id="loginForm" novalidate autocomplete="off">
+        <span class="auth-ic"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4M12 15v2"/></svg></span>
+        <span class="kicker">Patient Registry</span>
+        <h1>Sign in with your doctor PIN</h1>
+        <p>Patient records and MRI images are shown only after sign-in. You are signed out automatically after 60 seconds without activity.</p>
+        <p class="auth-note" id="authNote" role="status" hidden></p>
+        <label class="field field-pin" id="fLoginPin">
+          <span class="field-label">Doctor PIN <em>*</em> <small>4 letters or digits</small></span>
+          <input id="loginPin" name="pin" type="password" maxlength="4" placeholder="••••" required aria-describedby="loginErr" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <span class="field-err" id="loginErr" role="alert"></span>
+        </label>
+        <button class="btn btn-primary btn-xl" type="submit" id="loginBtn">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/></svg>
+          <span class="spin"></span>
+          <span class="btn-label">Sign in</span>
+        </button>
+        <p class="auth-fine">3 incorrect PINs in a row lock sign-in for 24 hours.</p>
+      </form>
+    </div>
+  </section>
+
+  <div id="app" hidden>
   <section class="registry-band">
     <div class="wrap band-in">
       <div>
         <span class="eyebrow"><i></i> Connected to the MRI Scanner</span>
         <h1>Patient &amp; Scan Registry</h1>
         <p>Every analysis from the MRI Scanner lands here automatically: patient, medical number, AI finding, confidence, and images. No refresh needed.</p>
+        <p class="scope-note" id="scopeNote"></p>
       </div>
       <div class="band-side">
         <a href="http://localhost:8000" target="mss-scanner" data-scanner-link class="btn btn-primary btn-lg">
@@ -120,6 +151,59 @@
       </div>
     </div>
   </section>
+
+  <!-- ============ Doctor accounts (department head only — enforced by the server) ============ -->
+  <section class="section doctors-section" id="doctors" hidden>
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <span class="kicker">Department head</span>
+          <h2>Doctor accounts</h2>
+          <p>Register doctors and manage their access. A new doctor can sign in to the MRI Scanner and the Patient Registry immediately. PINs are stored only as secure hashes and can never be viewed.</p>
+        </div>
+      </div>
+      <div class="doctors-grid">
+        <form class="card doctor-form" id="doctorForm" novalidate autocomplete="off">
+          <div class="card-head">
+            <h3>Register a doctor</h3>
+            <span class="req-badge">Head only</span>
+          </div>
+          <label class="field" id="fDocName">
+            <span class="field-label">Full name <em>*</em></span>
+            <input id="docName" name="name" maxlength="80" placeholder="Doctor's full name" required aria-describedby="docNameErr">
+            <span class="field-err" id="docNameErr" role="alert"></span>
+          </label>
+          <label class="field field-pin" id="fDocPin">
+            <span class="field-label">PIN <em>*</em> <small>Exactly 4 letters or digits · unique</small></span>
+            <input id="docPin" name="pin" type="password" maxlength="4" placeholder="••••" required aria-describedby="docPinErr" autocomplete="off" autocapitalize="characters" spellcheck="false">
+            <span class="field-err" id="docPinErr" role="alert"></span>
+          </label>
+          <label class="field field-pin" id="fDocPin2">
+            <span class="field-label">Confirm PIN <em>*</em></span>
+            <input id="docPin2" name="pin_confirm" type="password" maxlength="4" placeholder="••••" required aria-describedby="docPin2Err" autocomplete="off" autocapitalize="characters" spellcheck="false">
+            <span class="field-err" id="docPin2Err" role="alert"></span>
+          </label>
+          <p class="doctor-form-note"><span>Role: Doctor</span> · <span>Department:</span> <span id="docDept">Neurology</span></p>
+          <p class="doctor-form-note">Give the PIN to the doctor in person. It cannot be shown again.</p>
+          <button class="btn btn-primary" type="submit" id="docSubmit">
+            <svg class="ic" viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M3 20a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg>
+            Register doctor
+          </button>
+        </form>
+        <div class="card table-card">
+          <div class="table-scroll">
+            <table class="records doctors-table">
+              <thead>
+                <tr><th>Doctor</th><th>Role</th><th>Status</th><th>Scans</th><th>Registered</th><th><span class="sr">Access</span></th></tr>
+              </thead>
+              <tbody id="doctorsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  </div>
 </main>
 
 <footer class="footer">
@@ -150,8 +234,9 @@
         <div><dt>Regions flagged</dt><dd id="dRegions"></dd></div>
         <div><dt>Scan date</dt><dd id="dDate"></dd></div>
         <div><dt>Analysis time</dt><dd id="dTime"></dd></div>
-        <div><dt>Scan ID</dt><dd id="dId" class="mono"></dd></div>
+        <div><dt>Doctor</dt><dd id="dDoctor"></dd></div>
         <div><dt>Model</dt><dd id="dModel"></dd></div>
+        <div class="dl-wide"><dt>Scan ID</dt><dd id="dId" class="mono"></dd></div>
       </dl>
       <p class="m-text" id="dText"></p>
       <p class="disclaimer">AI-assisted screening result. Final diagnosis requires clinical assessment and appropriate diagnostic criteria.</p>

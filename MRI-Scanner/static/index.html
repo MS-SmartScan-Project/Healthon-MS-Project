@@ -113,6 +113,12 @@
               <input id="patientId" name="patient_id" maxlength="30" placeholder="e.g. MRN-10024" required aria-describedby="patientIdErr" spellcheck="false">
               <span class="field-err" id="patientIdErr" role="alert"></span>
             </label>
+            <label class="field field-pin" id="fPin">
+              <span class="field-label">Doctor PIN <em>*</em> <small>4 letters or digits</small></span>
+              <input id="doctorPin" name="doctor_pin" type="password" maxlength="4" placeholder="••••" required aria-describedby="doctorPinErr doctorPinHint" autocomplete="off" autocapitalize="characters" spellcheck="false">
+              <span class="field-err" id="doctorPinErr" role="alert"></span>
+              <span class="field-hint" id="doctorPinHint">The scan is saved under your doctor account. The PIN is cleared after each analysis.</span>
+            </label>
           </form>
 
           <div class="card" id="sourceCard">

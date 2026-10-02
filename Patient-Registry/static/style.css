@@ -774,3 +774,49 @@ html[lang="ar"] .m-id { font-family: var(--font); }
   .lang-btn { padding: 0 10px; }
   .brand-logo { height: 50px; }
 }
+
+/* ================================================================
+   Doctor PIN sign-in, signed-in doctor, and doctor accounts (head only)
+   ================================================================ */
+.field-hint { display: block; margin-top: 6px; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
+.field-pin { padding-top: 14px; border-top: 1px dashed var(--line-2); }
+.field-pin input { font-family: var(--mono); font-size: 16px; letter-spacing: .45em; }
+.field-pin input::placeholder { letter-spacing: .3em; }
+.field input:disabled { cursor: not-allowed; opacity: .6; }
+
+.auth-screen { padding: 56px 0 72px; }
+.auth-card { display: flex; flex-direction: column; align-items: flex-start; width: min(460px, 100%); margin-inline: auto; padding: 32px; box-shadow: var(--shadow); }
+.auth-ic { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 18px; border-radius: 16px; background: var(--grad-brand); color: #fff; box-shadow: 0 12px 26px -10px rgba(31, 98, 240, .7); }
+.auth-ic .ic { width: 24px; height: 24px; }
+.auth-card h1 { margin-top: 6px; font-size: 26px; font-weight: 800; }
+.auth-card > p { margin-top: 8px; font-size: 14px; color: var(--muted); line-height: 1.55; }
+.auth-card .field { width: 100%; margin-top: 20px; }
+.auth-card .btn-xl { margin-top: 18px; }
+.auth-note { width: 100%; margin-top: 16px !important; padding: 10px 12px; border-radius: 12px; font-size: 13px !important; font-weight: 600; color: #1d3f8a !important; background: var(--blue-50); border: 1px solid #d7e3ff; }
+.auth-fine { width: 100%; margin-top: 14px; font-size: 12px; color: var(--muted); text-align: center; }
+
+.topbar .btn-ghost-light.btn-sm { height: 32px; border-radius: 999px; font-size: 12.5px; }
+.scope-note { margin-top: 10px !important; font-size: 13px; color: #9be3ff !important; }
+
+.who small.owner { display: block; font-size: 11.5px; color: var(--blue); font-weight: 600; }
+.who small.owner.unassigned { color: var(--amber); }
+.m-info dl .dl-wide { grid-column: 1 / -1; }
+
+.doctors-section { padding-top: 8px; }
+.doctors-grid { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 16px; align-items: start; }
+.doctor-form { padding: 20px; }
+.doctor-form .field { margin-bottom: 14px; }
+.doctor-form-note { margin-top: 10px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.doctor-form .btn { width: 100%; margin-top: 16px; }
+.avatar.avatar-sm { width: 30px; height: 30px; font-size: 11px; flex: none; }
+.doctors-table .act { text-align: right; }
+.doctors-table tbody tr { cursor: default; }
+.muted-cell { color: var(--muted); }
+@media (max-width: 1080px) { .doctors-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .auth-card { padding: 24px 20px; } .auth-screen { padding: 28px 0 48px; } }
+[dir="rtl"] .doctors-table .act { text-align: left; }
+[dir="rtl"] .field-pin input, [dir="rtl"] #loginPin { direction: ltr; text-align: right; }
+/* signed-in header: the extra Doctors link and Sign out button must fit on one line */
+@media (max-width: 1280px) { #signOutBtn .lbl { display: none; } #signOutBtn { padding: 0 9px; } }
+@media (max-width: 1180px) { .live-chip > span { display: none; } .live-chip { padding: 0 10px; } }
+.table-scroll { position: relative; }   /* keeps the hidden column label inside the scrolling table */
