@@ -1,14 +1,15 @@
 """
 محرك التحليل — النموذج يُحمَّل مرة واحدة فقط فيكون كل فحص أسرع بكثير.
 
+النموذج: lesion_yolo26s.pt — YOLO26s مدرَّب على MSLesSeg (شرائح FLAIR محورية، 75 مريضاً،
+أقنعة بؤر من خبراء، تقسيم حسب المريض). فئة واحدة: lesion. على مرضى الاختبار:
+precision 0.67، recall 0.59، mAP50 0.62.
+
 الخطوات:
   1) قراءة الصورة وتحويلها إلى رمادي
-  2) تشغيل best.pt على الصورة الرمادية **بدون CLAHE** بحد ثقة conf=0.05
-     (CLAHE كان يُخفي البؤر الحقيقية؛ يُستخدم الآن لصورة العرض "Enhanced" فقط)
-     النموذج يُشغَّل بحجمين (320 و 640): يبدو أنه دُرّب على صور صغيرة، فبعض البؤر لا تظهر له إلا بالحجم الصغير.
-  3) تجاهل الصناديق الكبيرة جداً (> 15% من الصورة): النموذج يرسم أحياناً مربعاً حول الدماغ كله،
-     وهذا ليس آفة. تُحفظ هذه الصناديق للمراجعة لكنها لا تُحتسب في النتيجة.
-     الصناديق المتكررة لنفس البؤرة من الحجمين تُدمج في صندوق واحد (بأعلى ثقة).
+  2) تشغيل النموذج على الصورة الرمادية **بدون CLAHE** (CLAHE يُخفي البؤر؛ يُستخدم لصورة العرض "Enhanced" فقط)
+     بحجم 640 (حجم التدريب) وبحد ثقة CONF المختار من منحنى F1 على مجموعة التحقق
+  3) تجاهل الصناديق الكبيرة جداً (> 15% من الصورة): ليست آفة. تُحفظ للمراجعة لكنها لا تُحتسب.
   4) إذا بقيت صناديق بؤرية → Infected + أعلى نسبة ثقة، وإلا → Healthy دون ثقة مصطنعة
 """
 import os
@@ -16,9 +17,9 @@ import threading
 
 import cv2
 
-MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "best.pt")
-CONF = 0.05          # نفس قيمة predict.py
-IMAGE_SIZES = (320, 640)   # 640 = حجم التدريب المحفوظ في النموذج؛ 320 يكشف بؤراً يفوّتها 640
+MODEL_PATH = os.environ.get("MS_MODEL") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "lesion_yolo26s.pt")
+CONF = 0.26          # best F1 threshold on the validation patients
+IMAGE_SIZES = (640,)       # training size
 MAX_LESION_AREA = 0.15   # آفة MS بقعة صغيرة؛ صندوق يغطي أكثر من 15% من الصورة = الدماغ كله، لا آفة
 
 
@@ -45,7 +46,7 @@ _error = None
 
 
 def load_model():
-    """يحمّل best.pt (يُستدعى مرة واحدة عند تشغيل السيرفر)."""
+    """يحمّل النموذج (يُستدعى مرة واحدة عند تشغيل السيرفر)."""
     global _model, _error
     try:
         os.environ["YOLO_VERBOSE"] = "False"
@@ -84,8 +85,8 @@ def analyze(image_path, enhanced_path, annotated_path):
     gray, enhanced = enhance(image_path, enhanced_path)
     model_input = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)      # بدون CLAHE — انظر الوصف أعلاه
     with _lock:
-        # TTA checks scaled/flipped views and improves robustness across camera/upload sources.
-        results = [_model(model_input, verbose=False, conf=CONF, imgsz=size, augment=True)[0] for size in IMAGE_SIZES]
+        # No TTA: on test samples it added a false alarm and was 3-4x slower (matters on the Pi 5).
+        results = [_model(model_input, verbose=False, conf=CONF, imgsz=size, augment=False)[0] for size in IMAGE_SIZES]
 
     boxes, ignored = [], []
     h, w = gray.shape[:2]
@@ -128,6 +129,6 @@ def analyze(image_path, enhanced_path, annotated_path):
         "confidence": round(confidence, 1) if confidence is not None else None,
         "boxes": boxes,
         "ignored_boxes": ignored,     # whole-brain regions, kept for audit only
-        "tta": True,
+        "tta": False,
         "image_sizes": list(IMAGE_SIZES),
     }

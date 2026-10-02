@@ -40,7 +40,7 @@ MAX_IMAGE_PIXELS = 25_000_000
 CSRF_TOKEN = secrets.token_urlsafe(32)
 RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_REQUESTS = 30
-INFERENCE_VERSION = "yolo11n-raw-focal-ms-v4"   # v4: no CLAHE, whole-brain boxes ignored, run at 320 + 640 px
+INFERENCE_VERSION = "yolo26s-mslesseg-v5"   # v5: YOLO26s trained on MSLesSeg FLAIR, conf 0.26, 640 px, no CLAHE, no TTA
 MEDICAL_NUMBER_RE = re.compile(r"[A-Z0-9][A-Z0-9\-_/.]{0,29}")
 _request_times = defaultdict(deque)
 _rate_lock = threading.Lock()
@@ -492,7 +492,7 @@ def main():
     print("  -----------------------------")
     print(f"  Website:  {url}")
     print("  Stop:     Ctrl + C\n")
-    print("  Loading AI model (best.pt) ...")
+    print("  Loading AI model ...")
 
     def boot():
         ok = detector.load_model()
