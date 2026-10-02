@@ -44,7 +44,7 @@
     $('recordsBody').innerHTML = rows.map((s) => `
       <tr data-id="${esc(s.id)}" tabindex="0">
         <td data-label="Patient"><div class="who"><span class="thumb">${s.media_available ? `<img src="${esc(s.annotated)}" alt="" loading="lazy">` : ''}</span>
-          <span><b>${esc(s.patient || 'Unnamed (legacy record)')}</b><small>${esc(s.inference_version ? 'YOLO11n' : 'Legacy scan')}</small></span></div></td>
+          <span><b>${esc(s.patient || 'Unnamed (legacy record)')}</b><small>${esc(!s.inference_version ? 'Legacy scan' : s.inference_version.startsWith('yolo26') ? 'YOLO26s' : 'YOLO11n')}</small></span></div></td>
         <td data-label="Medical no.">${s.patient_id ? `<span class="mrn">${esc(s.patient_id)}</span>` : '—'}</td>
         <td data-label="Date & time">${fmtDate(s.created_at)}</td>
         <td data-label="AI finding"><span class="badge ${TONE[s.result] || 'green'}">${LABEL[s.result] || esc(s.result)}</span></td>
@@ -129,7 +129,7 @@
     $('dModel').textContent = current.inference_version || 'Legacy';
     $('dText').textContent = current.result === 'Infected'
       ? 'White matter lesions detected that may indicate MS or Small Vessel Disease (SVD); MRI alone cannot tell them apart. Tests to differentiate: lumbar puncture (CSF OCBs, κ-FLC), contrast-enhanced MRI of the brain and spinal cord, and vascular risk assessment (blood pressure, HbA1c, lipids).'
-      : current.result === 'Uncertain' ? 'Low-confidence finding below the 70% review threshold. Expert radiology review is recommended first; if a lesion is confirmed, the same tests help differentiate MS from SVD.'
+      : current.result === 'Uncertain' ? 'Low-confidence finding below the 50% review threshold. Expert radiology review is recommended first; if a lesion is confirmed, the same tests help differentiate MS from SVD.'
         : 'No white matter lesion suggestive of MS or SVD was detected by the current AI screening model.';
     $$('#dToggle .seg-btn').forEach((x, i) => x.classList.toggle('on', i === 0));
     modal.classList.add('open');

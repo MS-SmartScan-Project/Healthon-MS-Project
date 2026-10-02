@@ -21,7 +21,7 @@
     'Clinician': 'الطبيب',
     'Neurology · Radiology': 'الأعصاب · الأشعة',
     'AI model ready': 'النموذج جاهز',
-    'YOLO11n · best.pt loaded': 'YOLO11n · تم تحميل best.pt',
+    'YOLO26s · lesion model loaded': 'YOLO26s · تم تحميل نموذج البؤر',
     'Model unavailable': 'النموذج غير متاح',
     'Switch language': 'تغيير اللغة',
 
@@ -30,19 +30,19 @@
     'Screen MRI scans for': 'فحص صور الرنين المغناطيسي بحثاً عن',
     'MS-related lesions': 'آفات التصلب المتعدد',
     'in seconds.': 'خلال ثوانٍ.',
-    "MS SmartScan gives neurologists and radiologists a second pair of eyes: it enhances the MRI, localizes suspicious lesions with a trained YOLO11 model, and stores every result in the patient's record — entirely on-device.":
-      'يمنح MS SmartScan أطباء الأعصاب وأخصائيي الأشعة عيناً ثانية: يحدد الآفات المشتبهة في صورة الرنين بنموذج YOLO11 مدرَّب، ويحفظ كل نتيجة في سجل المريض — بالكامل على الجهاز.',
+    "MS SmartScan gives neurologists and radiologists a second pair of eyes: it enhances the MRI, localizes suspicious lesions with a trained YOLO26 model, and stores every result in the patient's record — entirely on-device.":
+      'يمنح MS SmartScan أطباء الأعصاب وأخصائيي الأشعة عيناً ثانية: يحدد الآفات المشتبهة في صورة الرنين بنموذج YOLO26 مدرَّب، ويحفظ كل نتيجة في سجل المريض — بالكامل على الجهاز.',
     'Start a new scan': 'بدء فحص جديد',
     'How it works': 'كيف يعمل',
     'Precision': 'الدقة',
     'Recall': 'الحساسية',
     'Avg. analysis': 'متوسط التحليل',
-    'Validation-set metrics recorded in the model file (best.pt). Analysis time is measured live on this device.':
-      'مقاييس بيانات التحقق مسجّلة في ملف النموذج (best.pt). زمن التحليل يُقاس مباشرة على هذا الجهاز.',
+    'Metrics on test patients the model never saw (MSLesSeg). Analysis time is measured live on this device.':
+      'المقاييس على مرضى اختبار لم يرهم النموذج (MSLesSeg). زمن التحليل يُقاس مباشرة على هذا الجهاز.',
     'Focal lesion check': 'فحص البؤر',
     'Whole-brain regions ignored': 'تجاهل المناطق بحجم الدماغ كاملاً',
     'Lesion localization': 'تحديد موقع الآفات',
-    'YOLO11n · on-device': 'YOLO11n · على الجهاز',
+    'YOLO26s · on-device': 'YOLO26s · على الجهاز',
 
     // ---------- scanner: workspace ----------
     'Clinical workspace': 'مساحة العمل السريرية',
@@ -59,7 +59,7 @@
     'MRI image': 'صورة الرنين',
     'Upload or capture': 'رفع أو تصوير',
     'AI analysis': 'تحليل الذكاء الاصطناعي',
-    'YOLO11n + focal check': 'YOLO11n + فحص البؤر',
+    'YOLO26s + focal check': 'YOLO26s + فحص البؤر',
     'Finding': 'النتيجة',
     'Result & next step': 'النتيجة والخطوة التالية',
     'Record': 'السجل',
@@ -134,10 +134,10 @@
     "After analysis you will see the finding, the model's confidence, and the recommended next clinical step.":
       'بعد التحليل ستظهر النتيجة، ونسبة ثقة النموذج، والخطوة السريرية التالية الموصى بها.',
     'Image sent securely to local AI engine': 'أُرسلت الصورة بأمان إلى محرك الذكاء الاصطناعي المحلي',
-    'YOLO11n inference and focal-lesion check': 'تحليل YOLO11n وفحص البؤر',
+    'YOLO26s inference and focal-lesion check': 'تحليل YOLO26s وفحص البؤر',
     'Result saved to patient record': 'حُفظت النتيجة في سجل المريض',
     'AI finding': 'نتيجة الذكاء الاصطناعي',
-    '70% review threshold': 'حد المراجعة 70%',
+    '50% review threshold': 'حد المراجعة 50%',
     'Regions flagged': 'المناطق المحددة',
     'Analysis time': 'زمن التحليل',
     'AI-assisted screening result. Final diagnosis requires clinical assessment and appropriate diagnostic criteria.':
@@ -147,9 +147,9 @@
       'تم اكتشاف آفة في صورة الرنين قد تكون مرتبطة بالتصلب المتعدد (MS) أو بحالة أخرى مزيلة للميالين.',
     'Highest confidence among the lesion regions returned by the model.': 'أعلى نسبة ثقة بين مناطق الآفات التي حددها النموذج.',
     'Low-confidence finding': 'نتيجة منخفضة الثقة',
-    'The model returned a possible lesion below the 70% review threshold. This result is inconclusive and should not be read as normal or abnormal without expert review.':
-      'رصد النموذج آفة محتملة بثقة أقل من حد المراجعة 70%. هذه النتيجة غير حاسمة ولا ينبغي اعتبارها طبيعية أو غير طبيعية دون مراجعة مختص.',
-    'Below the 70% threshold (marker on the bar) used to report a suspicious lesion.': 'أقل من حد 70% (العلامة على الشريط) المستخدم للإبلاغ عن آفة مشتبهة.',
+    'The model returned a possible lesion below the 50% review threshold. This result is inconclusive and should not be read as normal or abnormal without expert review.':
+      'رصد النموذج آفة محتملة بثقة أقل من حد المراجعة 50%. هذه النتيجة غير حاسمة ولا ينبغي اعتبارها طبيعية أو غير طبيعية دون مراجعة مختص.',
+    'Below the 50% threshold (marker on the bar) used to report a suspicious lesion.': 'أقل من حد 50% (العلامة على الشريط) المستخدم للإبلاغ عن آفة مشتبهة.',
     'No suspicious MS-related pattern detected': 'لم يُكتشف نمط مشتبه مرتبط بالتصلب المتعدد',
     'No suspicious MS-related pattern was detected by the current AI screening model.': 'لم يكتشف نموذج الفحص الحالي أي نمط مشتبه مرتبط بالتصلب المتعدد.',
     'The model returned no lesion regions, so no confidence score is reported.': 'لم يحدد النموذج أي مناطق آفات، لذلك لا توجد نسبة ثقة.',
@@ -188,8 +188,8 @@
     'Capture': 'الالتقاط',
     'Raspberry Pi Camera Module v2 or direct image upload.': 'كاميرا Raspberry Pi Module v2 أو رفع الصورة مباشرة.',
     'Detect': 'الكشف',
-    'YOLO11n lesion detector on the grayscale MRI, with test-time augmentation, at 320 and 640 px.':
-      'كاشف الآفات YOLO11n على صورة الرنين الرمادية، مع تعزيز وقت الاختبار، بحجمي 320 و640 بكسل.',
+    'YOLO26s lesion detector on the grayscale MRI at 640 px, trained to also work on camera photos of printed scans.':
+      'كاشف الآفات YOLO26s على صورة الرنين الرمادية بحجم 640 بكسل، مدرَّب ليعمل أيضاً على صور الكاميرا للصور المطبوعة.',
     'Focal check': 'فحص البؤر',
     'Regions too large to be a lesion (whole-brain boxes) are ignored, so only focal findings count.':
       'تُتجاهل المناطق الأكبر من أن تكون آفة (مربعات الدماغ كاملاً)، فلا تُحتسب إلا النتائج البؤرية.',
@@ -197,10 +197,10 @@
     'Finding, confidence, flagged regions, and next clinical step — saved to the record.':
       'النتيجة، ونسبة الثقة، والمناطق المحددة، والخطوة السريرية التالية — تُحفظ في السجل.',
     'AI model': 'نموذج الذكاء الاصطناعي',
-    "YOLO11n fine-tuned on labeled MRI slices (100 epochs, 640 px). Metrics are from the model's validation split.":
-      'YOLO11n مُدرَّب على شرائح رنين موسومة (100 دورة تدريب، 640 بكسل). المقاييس من بيانات التحقق الخاصة بالنموذج.',
-    'Validation metrics are not a clinical validation. Prospective evaluation on local clinical data is planned.':
-      'مقاييس التحقق ليست تحققاً سريرياً. من المخطط إجراء تقييم مستقبلي على بيانات سريرية محلية.',
+    "YOLO26s trained on MSLesSeg FLAIR slices with expert lesion masks (40 epochs, 640 px, patient-level split). Metrics are on test patients the model never saw.":
+      'YOLO26s مُدرَّب على شرائح FLAIR من MSLesSeg بأقنعة آفات من خبراء (40 دورة تدريب، 640 بكسل، تقسيم حسب المريض). المقاييس على مرضى اختبار لم يرهم النموذج.',
+    'These metrics are not a clinical validation. Prospective evaluation on local clinical data is planned.':
+      'هذه المقاييس ليست تحققاً سريرياً. من المخطط إجراء تقييم مستقبلي على بيانات سريرية محلية.',
     'Device': 'الجهاز',
     'Raspberry Pi 5 (4 GB) with Camera Module v2 and touch display': 'Raspberry Pi 5 (4 جيجابايت) مع كاميرا Module v2 وشاشة لمس',
     'AI analysis runs locally on the device — MRI images are not uploaded to any cloud service':
@@ -317,8 +317,8 @@
     'Scan deleted.': 'تم حذف الفحص.',
     'Suspicious lesion detected that may be associated with MS or another demyelinating condition. Recommended diagnostic tests: lumbar puncture (CSF: OCBs, κ-FLC) and contrast-enhanced MRI of the brain and spinal cord.':
       'تم اكتشاف آفة مشتبهة قد تكون مرتبطة بالتصلب المتعدد أو بحالة أخرى مزيلة للميالين. الفحوصات التشخيصية الموصى بها: البزل القطني (السائل النخاعي: OCBs و κ-FLC) ورنين مغناطيسي بالصبغة للدماغ والحبل الشوكي.',
-    'Low-confidence finding below the 70% review threshold. Expert radiology review is recommended first; if MS is still suspected, consider lumbar puncture and contrast-enhanced MRI.':
-      'نتيجة منخفضة الثقة أقل من حد المراجعة 70%. يوصى أولاً بمراجعة أخصائي أشعة؛ وإذا استمر الاشتباه بالتصلب المتعدد، يُنظر في البزل القطني والرنين المغناطيسي بالصبغة.',
+    'Low-confidence finding below the 50% review threshold. Expert radiology review is recommended first; if MS is still suspected, consider lumbar puncture and contrast-enhanced MRI.':
+      'نتيجة منخفضة الثقة أقل من حد المراجعة 50%. يوصى أولاً بمراجعة أخصائي أشعة؛ وإذا استمر الاشتباه بالتصلب المتعدد، يُنظر في البزل القطني والرنين المغناطيسي بالصبغة.',
     // ---------- MS / SVD wording (the model finds white matter lesions; it cannot tell MS from SVD) ----------
     'MS SmartScan · AI-Assisted MS / SVD Lesion Screening': 'MS SmartScan · الكشف عن آفات التصلب المتعدد وأمراض الأوعية الصغيرة بمساعدة الذكاء الاصطناعي',
     'AI clinical decision support · MS & Small Vessel Disease': 'دعم القرار السريري بالذكاء الاصطناعي · التصلب المتعدد وأمراض الأوعية الصغيرة',
@@ -329,9 +329,9 @@
     'Suspected MS / SVD': 'اشتباه تصلب متعدد / أمراض الأوعية الصغيرة',
     'White matter lesions were detected that may indicate Multiple Sclerosis (MS) or cerebral Small Vessel Disease (SVD). MRI appearance alone cannot reliably tell them apart.':
       'تم اكتشاف آفات في المادة البيضاء قد تدل على التصلب المتعدد (MS) أو أمراض الأوعية الدموية الدماغية الصغيرة (SVD). لا يمكن التمييز بينهما بشكل موثوق من مظهر الرنين وحده.',
-    'The model returned a possible white matter lesion below the 70% review threshold. This result is inconclusive and should not be read as normal or abnormal without expert review.':
-      'رصد النموذج آفة محتملة في المادة البيضاء بثقة أقل من حد المراجعة 70%. هذه النتيجة غير حاسمة ولا ينبغي اعتبارها طبيعية أو غير طبيعية دون مراجعة مختص.',
-    'Below the 70% threshold (marker on the bar) used to report a suspected MS / SVD lesion.': 'أقل من حد 70% (العلامة على الشريط) المستخدم للإبلاغ عن اشتباه تصلب متعدد / أمراض الأوعية الصغيرة.',
+    'The model returned a possible white matter lesion below the 50% review threshold. This result is inconclusive and should not be read as normal or abnormal without expert review.':
+      'رصد النموذج آفة محتملة في المادة البيضاء بثقة أقل من حد المراجعة 50%. هذه النتيجة غير حاسمة ولا ينبغي اعتبارها طبيعية أو غير طبيعية دون مراجعة مختص.',
+    'Below the 50% threshold (marker on the bar) used to report a suspected MS / SVD lesion.': 'أقل من حد 50% (العلامة على الشريط) المستخدم للإبلاغ عن اشتباه تصلب متعدد / أمراض الأوعية الصغيرة.',
     'No suspicious white matter lesion detected': 'لم تُكتشف آفة مشتبهة في المادة البيضاء',
     'No white matter lesion suggestive of MS or SVD was detected by the current AI screening model.': 'لم يكتشف نموذج الفحص الحالي أي آفة في المادة البيضاء تشير إلى التصلب المتعدد أو أمراض الأوعية الصغيرة.',
     'No suspicious lesion': 'لا توجد آفة مشتبهة',
@@ -351,8 +351,8 @@
       'سجل المرضى · الكشف عن آفات التصلب المتعدد وأمراض الأوعية الصغيرة بمساعدة الذكاء الاصطناعي · الكلية التقنية الرقمية للبنات بالرياض',
     'White matter lesions detected that may indicate MS or Small Vessel Disease (SVD); MRI alone cannot tell them apart. Tests to differentiate: lumbar puncture (CSF OCBs, κ-FLC), contrast-enhanced MRI of the brain and spinal cord, and vascular risk assessment (blood pressure, HbA1c, lipids).':
       'تم اكتشاف آفات في المادة البيضاء قد تدل على التصلب المتعدد أو أمراض الأوعية الصغيرة (SVD)، ولا يمكن التمييز بينهما من الرنين وحده. فحوصات التمييز: البزل القطني (OCBs و κ-FLC في السائل النخاعي)، ورنين مغناطيسي بالصبغة للدماغ والحبل الشوكي، وتقييم عوامل الخطر الوعائية (ضغط الدم، السكر التراكمي، الدهون).',
-    'Low-confidence finding below the 70% review threshold. Expert radiology review is recommended first; if a lesion is confirmed, the same tests help differentiate MS from SVD.':
-      'نتيجة منخفضة الثقة أقل من حد المراجعة 70%. يوصى أولاً بمراجعة أخصائي أشعة؛ وإذا تأكدت الآفة، تساعد الفحوصات نفسها على التمييز بين التصلب المتعدد وأمراض الأوعية الصغيرة.',
+    'Low-confidence finding below the 50% review threshold. Expert radiology review is recommended first; if a lesion is confirmed, the same tests help differentiate MS from SVD.':
+      'نتيجة منخفضة الثقة أقل من حد المراجعة 50%. يوصى أولاً بمراجعة أخصائي أشعة؛ وإذا تأكدت الآفة، تساعد الفحوصات نفسها على التمييز بين التصلب المتعدد وأمراض الأوعية الصغيرة.',
     's': 'ث',
   };
 

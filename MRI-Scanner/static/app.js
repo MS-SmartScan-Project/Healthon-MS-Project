@@ -31,7 +31,7 @@
       const chip = $('modelChip');
       state.csrf = s.csrf_token || '';
       if (s.ready) {
-        chip.dataset.state = 'ready'; chip.lastElementChild.textContent = 'AI model ready'; chip.title = 'YOLO11n · best.pt loaded';
+        chip.dataset.state = 'ready'; chip.lastElementChild.textContent = 'AI model ready'; chip.title = 'YOLO26s · lesion model loaded';
         state.modelReady = true; updateUI(); return;
       }
       if (s.error) { chip.dataset.state = 'error'; chip.lastElementChild.textContent = 'Model unavailable'; chip.title = s.error; return; }
@@ -375,8 +375,8 @@
     } else if (d.result === 'Uncertain') {
       f.dataset.tone = 'amber'; $('fIcon').innerHTML = ICON.alert;
       $('fTitle').textContent = 'Low-confidence finding';
-      $('fText').textContent = 'The model returned a possible white matter lesion below the 70% review threshold. This result is inconclusive and should not be read as normal or abnormal without expert review.';
-      $('fConfNote').textContent = 'Below the 70% threshold (marker on the bar) used to report a suspected MS / SVD lesion.';
+      $('fText').textContent = 'The model returned a possible white matter lesion below the 50% review threshold. This result is inconclusive and should not be read as normal or abnormal without expert review.';
+      $('fConfNote').textContent = 'Below the 50% threshold (marker on the bar) used to report a suspected MS / SVD lesion.';
       $('nsLead').textContent = 'Expert radiology review of this MRI is recommended first.';
       $('nsSub').textContent = 'If a lesion is confirmed on review';
       ns.hidden = false; tag('Low-confidence finding', 'amber');

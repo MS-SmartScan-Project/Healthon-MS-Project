@@ -34,7 +34,7 @@ except ImportError as error:
 
 # ---------------- الإعدادات ----------------
 PORT = 8000
-MIN_CONFIDENCE = 70      # أقل من ذلك تُعرض النتيجة كغير حاسمة، لا كسليمة
+MIN_CONFIDENCE = 50      # أقل من ذلك تُعرض النتيجة كغير حاسمة، لا كسليمة
 MAX_UPLOAD_MB = 15
 MAX_IMAGE_PIXELS = 25_000_000
 CSRF_TOKEN = secrets.token_urlsafe(32)
@@ -75,7 +75,7 @@ with db() as con:
         patient_id  TEXT,
         result      TEXT NOT NULL,      -- Infected / Healthy / Uncertain
         confidence  REAL,
-        raw_result  TEXT,               -- ناتج النموذج قبل قاعدة الـ 70%
+        raw_result  TEXT,               -- ناتج النموذج قبل قاعدة الـ 50%
         lesions     INTEGER NOT NULL DEFAULT 0,
         boxes       TEXT,               -- JSON
         seconds     REAL
