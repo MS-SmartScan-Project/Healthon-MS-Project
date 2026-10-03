@@ -21,6 +21,7 @@
   const state = {
     mode: 'upload', stream: null, image: null, imageMeta: null, busy: false, modelReady: false,
     csrf: '', result: null, view: 'annotated', zoom: 1, pan: { x: 0, y: 0 },
+    mriCheck: null,   // null = not checked yet, 'ok' = brain MRI, otherwise the server's rejection
   };
 
   const normId = (v) => v.replace(/\s+/g, '').toUpperCase();
@@ -148,6 +149,12 @@
       resetResult();
       showImage(state.image);
       updateUI();
+      const checked = state.image;   // AI checks it is a brain MRI right away, before patient details or the PIN
+      checkMRI(checked).then((rejected) => {
+        if (state.image !== checked || state.busy) return;
+        state.mriCheck = rejected || 'ok';
+        if (rejected) showRejected(rejected);
+      });
     };
     img.onerror = () => { URL.revokeObjectURL(img.src); els.imageErr.textContent = 'The image file could not be read.'; };
     img.src = URL.createObjectURL(file);
@@ -282,10 +289,43 @@
     });
   }
 
+  /* Step 0: is this a brain MRI? Needs no patient details or PIN, and saves nothing.
+     Returns the rejection, or null if it is an MRI (or the check is unavailable — /api/analyze checks again). */
+  async function checkMRI(image) {
+    try {
+      const res = await fetch('/api/check-image', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': state.csrf },
+        body: JSON.stringify({ image }),
+      });
+      const d = await res.json();
+      return res.ok && d.is_mri === false ? d : null;
+    } catch { return null; }
+  }
+
+  function showRejected(d) {
+    if (state.mode === 'camera') {   // go back to the live camera so the user can re-aim and capture again
+      state.image = null; state.imageMeta = null; state.mriCheck = null; els.preview.hidden = true;
+    }
+    state.result = d; showResult(d); updateUI();
+  }
+
   let timer = null;
   async function runAnalysis() {
     if (state.busy) return;
     touched = true;
+
+    // The AI first checks that the image is a brain MRI; patient details and the PIN are only needed after that
+    if (!state.image && state.mode === 'camera' && state.stream && els.video.videoWidth) {
+      state.image = toSquare640(els.video, els.video.videoWidth, els.video.videoHeight);
+      state.imageMeta = { name: 'Camera capture', info: `${MODEL_SIZE} × ${MODEL_SIZE} px` };
+      state.mriCheck = null; resetResult(); showImage(state.image);
+    }
+    if (state.image && state.mriCheck !== 'ok') {
+      const rejected = state.mriCheck || await checkMRI(state.image);
+      state.mriCheck = rejected || 'ok';
+      if (rejected) { showRejected(rejected); return; }
+    }
+
     const errs = fieldErrors();
     const patientOk = showFieldErrors(errs, { focus: true });
 
@@ -348,7 +388,7 @@
   els.analyze.addEventListener('click', runAnalysis);
 
   function resetResult() {
-    state.result = null;
+    state.result = null; state.mriCheck = null;
     els.finding.dataset.state = 'idle'; els.finding.dataset.tone = '';
     els.nextStep.hidden = true; els.recordSaved.hidden = true; els.stageTag.hidden = true;
   }

@@ -46,6 +46,8 @@ RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_REQUESTS = 30
 AUTH_RATE_LIMIT = 10     # تحقق من الرمز في الدقيقة (إضافة إلى القفل بعد 3 رموز خاطئة)
 SITE = "scanner"
+NOT_MRI_MESSAGE = ("This image does not look like a brain MRI slice, so it was not analyzed or saved. "
+                   "Place the printed axial FLAIR scan upright inside the square and capture again.")
 INFERENCE_VERSION = "yolo26s-mslesseg-photo-v7"   # v7: MRI gate (mri_gate.pt) + YOLO26s, MSLesSeg FLAIR + simulated camera photos, conf 0.25, 640 px
 MEDICAL_NUMBER_RE = re.compile(r"[A-Z0-9][A-Z0-9\-_/.]{0,29}")
 _request_times = defaultdict(deque)
@@ -325,6 +327,25 @@ class Handler(BaseHTTPRequestHandler):
         self.send_error(404)
 
     # ---- POST: تحليل صورة ----
+    def check_image(self, raw):
+        """MRI check that runs as soon as an image is chosen, before patient details or the PIN are needed.
+        Nothing is saved and no patient data is involved; /api/analyze repeats the same check."""
+        if not detector.status()["ready"]:
+            return self.send_json({"error": "The AI model is still loading. Please wait a moment and try again."}, 503)
+        image = cv2.imdecode(np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if image is None:
+            return self.send_json({"error": "The image file could not be read."}, 422)
+        try:
+            is_mri, _, similarity = detector.check_mri(image)
+        except Exception as e:
+            sys.stderr.write(f"Image check failed: {e}\n")
+            return self.send_json({"error": "The image could not be checked."}, 500)
+        if not is_mri:
+            audit("check-image", None, "not-mri-rejected")
+            return self.send_json({"is_mri": False, "code": "not_mri", "title": "Not a brain MRI",
+                                   "error": NOT_MRI_MESSAGE}, 200)
+        return self.send_json({"is_mri": True}, 200)
+
     def do_POST(self):
         if not self.request_allowed():
             return self.send_json({"error": "Request not allowed."}, 403)
@@ -332,7 +353,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"error": "Too many requests. Please wait a minute and try again."}, 429)
         if not self.csrf_valid():
             return self.send_json({"error": "Request could not be verified. Please reload the page."}, 403)
-        if urlparse(self.path).path != "/api/analyze":
+        path = urlparse(self.path).path
+        if path not in ("/api/analyze", "/api/check-image"):
             return self.send_error(404)
         if self.headers.get_content_type() != "application/json":
             return self.send_json({"error": "Unsupported request type."}, 415)
@@ -355,6 +377,9 @@ class Handler(BaseHTTPRequestHandler):
             raw = base64.b64decode(m.group(2), validate=True)
         except (ValueError, TypeError, json.JSONDecodeError, Base64Error):
             return self.send_json({"error": "Invalid request data."}, 400)
+
+        if path == "/api/check-image":
+            return self.check_image(raw)
 
         # أثناء القفل يُرفض كل شيء، حتى الرمز الصحيح
         locked = AUTH.locked_until(SITE)
@@ -450,8 +475,7 @@ class Handler(BaseHTTPRequestHandler):
                     os.remove(p)
             sys.stderr.write(f"Rejected {scan_id}: {e}\n")
             audit("analyze", scan_id, "not-mri-rejected")
-            return self.send_json({"error": "This image does not look like a brain MRI slice, so it was not analyzed or saved. "
-                                            "Place the printed axial FLAIR scan upright inside the square and capture again.",
+            return self.send_json({"error": NOT_MRI_MESSAGE,
                                    "title": "Not a brain MRI", "code": "not_mri"}, 422)
         except Exception as e:
             for p in (original_path, img_path, ann_path):

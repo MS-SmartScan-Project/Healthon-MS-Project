@@ -84,6 +84,19 @@ def status():
     return {"ready": False, "error": _error}
 
 
+def check_mri(color):
+    """Gate only (no lesion detection): is this BGR image a brain MRI slice?
+    Returns (is_mri, classifier probability, similarity to the reference MRI bank)."""
+    if _gate is None or _bank is None:
+        raise RuntimeError(_error or "النموذج غير محمّل")
+    with _lock:
+        probs = _gate(color, imgsz=224, verbose=False)[0].probs.data
+        emb = _gate.embed(color, imgsz=224, verbose=False)[0].cpu().numpy().ravel().astype(np.float32)
+    probability = float(probs[next(k for k, v in _gate.names.items() if v == "mri")])
+    similarity = float((_bank @ (emb / np.linalg.norm(emb))).max())
+    return probability >= MIN_MRI_PROBABILITY and similarity >= MIN_MRI_SIMILARITY, probability, similarity
+
+
 def enhance(image_path, enhanced_path=None):
     """Grayscale image for the model, plus a CLAHE copy saved only for the 'Enhanced' viewer layer."""
     img = cv2.imread(image_path, cv2.IMREAD_COLOR)
@@ -106,12 +119,8 @@ def analyze(image_path, enhanced_path, annotated_path):
     color = cv2.imread(image_path, cv2.IMREAD_COLOR)
     if color is None:
         raise ValueError("تعذّرت قراءة الصورة")
-    with _lock:
-        probs = _gate(color, imgsz=224, verbose=False)[0].probs.data
-        emb = _gate.embed(color, imgsz=224, verbose=False)[0].cpu().numpy().ravel().astype(np.float32)
-    mri_probability = float(probs[next(k for k, v in _gate.names.items() if v == "mri")])
-    mri_similarity = float((_bank @ (emb / np.linalg.norm(emb))).max())
-    if mri_probability < MIN_MRI_PROBABILITY or mri_similarity < MIN_MRI_SIMILARITY:
+    is_mri, mri_probability, mri_similarity = check_mri(color)
+    if not is_mri:
         raise NotMRIError(f"not a brain MRI (p={mri_probability:.3f}, similarity={mri_similarity:.3f})")
 
     gray, enhanced = enhance(image_path, enhanced_path)
