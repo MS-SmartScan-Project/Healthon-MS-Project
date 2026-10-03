@@ -6,11 +6,13 @@ MS SmartScan — حسابات الأطباء، الدخول بالرمز (PIN)،
 
 - الرمز: 4 خانات بالضبط A–Z / 0–9 (تُحوَّل للأحرف الكبيرة). لا يُحفظ أبداً كنص:
   يُحفظ PBKDF2 مملّح لكل حساب + بصمة HMAC بمفتاح سري (data/auth.key) تجعل الرمز فريداً وسريع البحث.
-- القفل: 3 رموز خاطئة متتالية تقفل الدخول على ذلك الموقع 24 ساعة (محفوظ في قاعدة البيانات).
+- القفل (موقع السجل فقط): 3 رموز خاطئة متتالية تقفل الدخول 24 ساعة (محفوظ في قاعدة البيانات).
+  موقع الفحص لا يقفل: يرفض الرمز الخاطئ فقط (مع حد للمحاولات في الدقيقة في السيرفر).
 - الجلسة (موقع السجل): رمز عشوائي في كوكي HttpOnly، ويُحفظ هاشه فقط؛ تنتهي بعد 60 ثانية بدون نشاط.
 """
 import hashlib
 import hmac
+import json
 import os
 import re
 import secrets
@@ -31,6 +33,8 @@ DEPARTMENT = "Neurology"
 # رئيسة القسم — تُنشأ مرة واحدة عند أول تشغيل. يُحفظ هنا هاش الرمز المتفق عليه فقط، لا الرمز نفسه.
 HEAD_NAME = "Hailah Alhejjei"
 HEAD_PIN_HASH = "pbkdf2_sha256$300000$00b2b2d59503f571923b9c33f99372a2$367621a8fc4654fadf192af7e5dcd1a7704fb62bec72a9d59f37779a07dfea16"
+# حسابات الفريق التجريبية (الاسم والدور وهاش الرمز فقط): تُضاف لأي نسخة من المشروع إذا لم تكن موجودة
+DEMO_ACCOUNTS_FILE = "demo-accounts.json"
 
 _lock = threading.Lock()
 
@@ -115,6 +119,7 @@ def public_doctor(row):
 class AuthStore:
     def __init__(self, db_path, data_dir):
         self.db_path = db_path
+        self.data_dir = data_dir
         self.key = _load_key(os.path.join(data_dir, "auth.key"))
         self.key_id = hashlib.sha256(self.key).hexdigest()[:16]
 
@@ -187,6 +192,34 @@ class AuthStore:
                 con.execute("INSERT INTO doctors (name, role, department, pin_hash, active, created_at) "
                             "VALUES (?, 'head', ?, ?, 1, ?)", (HEAD_NAME, DEPARTMENT, HEAD_PIN_HASH, _now_iso()))
         self._write(run)
+        self._add_demo_accounts()
+
+    def _add_demo_accounts(self):
+        """Team demo doctors listed in data/demo-accounts.json are added to any database that lacks them
+        (matched by name), so every copy of the project accepts their PINs. Existing accounts — including
+        disabled ones — are never changed."""
+        try:
+            with open(os.path.join(self.data_dir, DEMO_ACCOUNTS_FILE), encoding="utf-8") as f:
+                accounts = json.load(f)
+        except (OSError, ValueError):
+            return
+        if not isinstance(accounts, list):
+            return
+
+        def run(con):
+            for a in accounts:
+                if not isinstance(a, dict):
+                    continue
+                name, pin_hash = normalize_name(a.get("name")), a.get("pin_hash")
+                department = normalize_name(a.get("department")) or DEPARTMENT
+                if (a.get("role") != "doctor" or not valid_name(name) or not isinstance(pin_hash, str)
+                        or not pin_hash.startswith("pbkdf2_sha256$")):
+                    continue
+                if con.execute("SELECT 1 FROM doctors WHERE LOWER(name) = LOWER(?)", (name,)).fetchone():
+                    continue
+                con.execute("INSERT INTO doctors (name, role, department, pin_hash, active, created_at) "
+                            "VALUES (?, 'doctor', ?, ?, 1, ?)", (name, department, pin_hash, _now_iso()))
+        self._write(run)
 
     # ---------------- الرموز ----------------
     def _find(self, con, pin):
@@ -244,6 +277,13 @@ class AuthStore:
                 result["doctor"] = public_doctor(doctor)
             return result
         return self._write(run)
+
+    def check_pin(self, pin):
+        """Check a well-formed PIN without any lockout (MRI Scanner). Returns {"status": "ok" | "wrong" | "disabled", "doctor"}."""
+        doctor = self._write(lambda con: self._find(con, pin))
+        if doctor is None:
+            return {"status": "wrong"}
+        return {"status": "ok" if doctor["active"] else "disabled", "doctor": public_doctor(doctor)}
 
     def reset_lockout(self, site):
         """Administrator recovery from the server's own terminal (python server.py --reset-lockout)."""

@@ -218,7 +218,7 @@ def make_legacy_database(data_dir):
 
 
 class PinAuthTests(unittest.TestCase):
-    """Runs in order (test_01 … test_17); later steps use accounts and scans created earlier."""
+    """Runs in order (test_01 … test_19); later steps use accounts and scans created earlier."""
 
     @classmethod
     def setUpClass(cls):
@@ -377,16 +377,15 @@ class PinAuthTests(unittest.TestCase):
         status, body = self.analyze(s, "Q7", "Patient A", "PA-1", TINY)
         self.assertEqual(status, 422)
         status, body = self.analyze(s, "ZZ99", "Patient A", "PA-1", TINY)
-        self.assertEqual((status, body.get("code"), body.get("attempts_left")), (401, "wrong_pin", 2))
-        self.assertEqual(self.failures("scanner")[0], 1)
-        self.assertEqual(self.failures("registry")[0], 0)   # separate counter per site
+        self.assertEqual((status, body.get("code")), (401, "wrong_pin"))
+        self.assertNotIn("attempts_left", body)              # the Scanner never counts towards a lock
+        self.assertEqual(self.failures("registry")[0], 0)    # and does not touch the Registry's counter
 
         status, body, raw = self.submit_real(s, PIN_A, "Patient A", "PA-1")
         self.assertEqual(status, 200, body)
         self.assertEqual(body["doctor"], "Dr Amal Test")
         self.assertTrue(body["annotated"].startswith("data:image/png;base64,"))
         self.ids["scanA"], self.ids["rawA"] = body["id"], raw
-        self.assertEqual(self.failures("scanner")[0], 0)   # success resets the count
 
         status, body = self.analyze(s, PIN_B, "Patient B", "PB-1", data_url(self.mirrored(raw)))
         self.assertEqual(status, 200, body)
@@ -564,18 +563,17 @@ class PinAuthTests(unittest.TestCase):
         self.registry.restart()
         self.signed_in(HEAD_PIN)
 
-    # ---------------- 14 scanner lockout ----------------
-    def test_14_scanner_locks_after_3_wrong_pins(self):
+    # ---------------- 14 the Scanner never locks ----------------
+    def test_14_scanner_rejects_wrong_pins_but_never_locks(self):
         s = self.scan_client()
-        self.assertEqual(self.analyze(s, "WR11", "Patient A", "PA-1", TINY)[1]["attempts_left"], 2)
-        self.assertEqual(self.analyze(s, "WR12", "Patient A", "PA-1", TINY)[1]["attempts_left"], 1)
-        status, body = self.analyze(s, "WR13", "Patient A", "PA-1", TINY)
-        self.assertEqual((status, body["code"]), (423, "locked"))
-        status, body = self.analyze(s, PIN_A, "Patient A", "PA-1", TINY)
-        self.assertEqual((status, body["code"]), (423, "locked"))
-        self.signed_in(HEAD_PIN)                                    # the Registry is not affected
-        self.assertIn("lockout cleared", self.scanner.cli("--reset-lockout").stdout)
+        for pin in ("WR11", "WR12", "WR13", "WR14", "WR15"):
+            status, body = self.analyze(s, pin, "Patient A", "PA-1", TINY)
+            self.assertEqual((status, body.get("code")), (401, "wrong_pin"))
+        # the correct PIN is accepted right away (then the tiny test image is rejected — no AI run needed)
         self.assertEqual(self.analyze(s, PIN_A, "Patient A", "PA-1", TINY)[1].get("error"), "Image dimensions are not supported.")
+        self.assertEqual(self.failures("scanner"), (0, None))
+        self.assertEqual(self.failures("registry")[0], 0)           # the Registry's counter is untouched
+        self.signed_in(HEAD_PIN)
 
     # ---------------- 15 existing features ----------------
     def test_15_existing_features_still_work(self):
@@ -622,8 +620,25 @@ class PinAuthTests(unittest.TestCase):
         self.assertTrue(all(h.startswith("pbkdf2_sha256$300000$") for h in hashes))
         self.assertEqual(len(set(hashes)), len(hashes))
 
-    # ---------------- 17 shared files are identical in both sites ----------------
-    def test_17_shared_files_are_identical(self):
+    # ---------------- 18 team demo accounts reach any copy of the project ----------------
+    def test_18_demo_accounts_are_added_to_any_database(self):
+        sys.path.insert(0, os.path.join(ROOT, "Patient-Registry"))
+        import auth
+        accounts = [{"name": "Dr Demo Team", "role": "doctor", "department": "Neurology", "pin_hash": auth.hash_pin("DT64")},
+                    {"name": "Dr Badr Test", "role": "doctor", "department": "Neurology", "pin_hash": auth.hash_pin("DT65")}]
+        with open(os.path.join(self.tmp, "demo-accounts.json"), "w", encoding="utf-8") as f:
+            json.dump(accounts, f)
+        for _ in range(2):   # starting twice must not add it twice
+            self.registry.restart()
+        self.assertEqual(self.db().execute("SELECT COUNT(*) FROM doctors WHERE name = 'Dr Demo Team'").fetchone()[0], 1)
+        self.assertEqual(self.signed_in("DT64").get("/api/me")[1]["doctor"]["name"], "Dr Demo Team")
+        self.assertEqual(self.signed_in(PIN_B).get("/api/me")[1]["doctor"]["name"], "Dr Badr Test")   # existing account unchanged
+        self.assertEqual(self.reg().login("DT65")[0], 401)
+        os.remove(os.path.join(self.tmp, "demo-accounts.json"))
+        self.registry.restart()
+
+    # ---------------- 19 shared files are identical in both sites ----------------
+    def test_19_shared_files_are_identical(self):
         for rel in ("auth.py", "static/common.js", "static/i18n.js"):
             with open(os.path.join(ROOT, "MRI-Scanner", rel), "rb") as f:
                 a = f.read()

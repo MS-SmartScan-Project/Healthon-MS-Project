@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Dana Alenazy",
+    "role": "doctor",
+    "department": "Neurology",
+    "pin_hash": "pbkdf2_sha256$300000$72fc2a121b2fcab0f905fb0b2815912f$90d93fd58105e2f6d9c8cfb935f6e800cbabd61dcccff0725fe134d7e67ce2b3"
+  },
+  {
+    "name": "Marwah Sabay",
+    "role": "doctor",
+    "department": "Neurology",
+    "pin_hash": "pbkdf2_sha256$300000$95f2f2dfe2cd448579b10a4248c9e87b$4a9b806c191c159cf91aa6870896ecaa4091de11f060ce1d84ae8ed648f36e02"
+  }
+]

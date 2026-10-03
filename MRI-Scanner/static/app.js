@@ -2,7 +2,7 @@
 (() => {
   // The Scanner never reads the registry: it only submits scans. Records are viewed on the separate Patient Registry site.
   const { $, $$, LABEL, TONE, ICON, esc, fmtDate, pct, wait, toast, normPin, pinError, authMessage, chrome } = window.MSS;
-  const PIN_CODES = ['wrong_pin', 'locked', 'account_disabled'];
+  const PIN_CODES = ['wrong_pin', 'account_disabled'];   // the Scanner rejects a wrong PIN but never locks
   window.name = 'mss-scanner';   // the Registry's "MRI Scanner" link reuses this window
 
   const els = {

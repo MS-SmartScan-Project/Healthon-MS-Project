@@ -379,6 +379,8 @@
     'PIN must be exactly 4 letters or digits (A–Z, 0–9).': 'يجب أن يتكون الرمز من 4 خانات بالضبط: حروف إنجليزية أو أرقام (A–Z، 0–9).',
     'Enter your 4-character doctor PIN.': 'أدخل رمز الطبيب المكوّن من 4 خانات.',
     'Incorrect PIN.': 'رمز غير صحيح.',
+    'Incorrect PIN. Check your PIN and try again.': 'رمز غير صحيح. تأكد من رمزك وحاول مرة أخرى.',
+    'Incorrect PIN. Check your PIN and try again. Nothing was analyzed or saved.': 'رمز غير صحيح. تأكد من رمزك وحاول مرة أخرى. لم يُحلَّل أو يُحفظ أي شيء.',
     'Incorrect doctor PIN': 'رمز الطبيب غير صحيح',
     'PIN entry locked': 'إدخال الرمز مقفل',
     'Account disabled': 'الحساب موقوف',

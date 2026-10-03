@@ -5,8 +5,7 @@ MS SmartScan — موقع الفحص (MRI Scanner)
 يحلل صور الرنين بالذكاء الاصطناعي ويحفظ النتيجة في قاعدة البيانات المشتركة (../data).
 هذا الموقع يرسل الفحوصات فقط — لا يعرض السجل. السجل في موقع مستقل: ../Patient-Registry
 كل فحص يحتاج رمز الطبيب (PIN)؛ السيرفر يتحقق منه ويحفظ الطبيب كصاحب للفحص وللمريض الجديد.
-
-فك القفل بعد 3 رموز خاطئة (من طرفية هذا الجهاز فقط):  python server.py --reset-lockout
+الرمز الخاطئ يُرفض فقط — لا يوجد قفل في موقع الفحص (القفل في موقع السجل فقط)، مع حد للمحاولات في الدقيقة.
 """
 import base64
 import hashlib
@@ -44,8 +43,7 @@ MAX_IMAGE_PIXELS = 25_000_000
 CSRF_TOKEN = secrets.token_urlsafe(32)
 RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_REQUESTS = 30
-AUTH_RATE_LIMIT = 10     # تحقق من الرمز في الدقيقة (إضافة إلى القفل بعد 3 رموز خاطئة)
-SITE = "scanner"
+AUTH_RATE_LIMIT = 10     # تحقق من الرمز في الدقيقة — يحمي من التخمين السريع بدون قفل الطبيب
 NOT_MRI_MESSAGE = ("This image does not look like a brain MRI slice, so it was not analyzed or saved. "
                    "Place the printed axial FLAIR scan upright inside the square and capture again.")
 INFERENCE_VERSION = "yolo26s-mslesseg-photo-v7"   # v7: MRI gate (mri_gate.pt) + YOLO26s, MSLesSeg FLAIR + simulated camera photos, conf 0.25, 640 px
@@ -209,12 +207,6 @@ def scan_response(rec, image_paths):
     for key, path in image_paths.items():
         d[key] = data_url(path)
     return d
-
-
-def lock_payload(locked_until):
-    return {"error": "Too many incorrect PINs. PIN entry on the MRI Scanner is locked for 24 hours.",
-            "code": "locked", "title": "PIN entry locked",
-            "locked_until": datetime.fromtimestamp(locked_until).astimezone().isoformat(timespec="seconds")}
 
 
 # ---------------- الطلبات ----------------
@@ -381,12 +373,6 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/check-image":
             return self.check_image(raw)
 
-        # أثناء القفل يُرفض كل شيء، حتى الرمز الصحيح
-        locked = AUTH.locked_until(SITE)
-        if locked:
-            audit("analyze", None, "pin-locked")
-            return self.send_json(lock_payload(locked), 423)
-
         # بيانات المريض إلزامية: الاسم والرقم الطبي، ورمز الطبيب
         patient = normalize_name(payload.get("patient"))[:80]
         patient_id = normalize_medical_number(payload.get("patient_id"))
@@ -400,7 +386,7 @@ class Handler(BaseHTTPRequestHandler):
             fields["patient_id"] = "Use letters, digits, - _ / . only (maximum 30 characters)."
         if not pin:
             fields["pin"] = "Doctor PIN is required."
-        elif not auth.valid_pin(pin):   # صيغة خاطئة: تُرفض ولا تُحتسب محاولة
+        elif not auth.valid_pin(pin):
             fields["pin"] = "PIN must be exactly 4 letters or digits (A–Z, 0–9)."
         if fields:
             only_pin = set(fields) == {"pin"}
@@ -413,14 +399,11 @@ class Handler(BaseHTTPRequestHandler):
         # هوية الطبيب يحددها السيرفر من الرمز فقط — لا يُقبل أي معرّف طبيب من المتصفح
         if self.rate_limited("auth", AUTH_RATE_LIMIT):
             return self.send_json({"error": "Too many requests. Please wait a minute and try again."}, 429)
-        check = AUTH.sign_in(SITE, pin)
-        if check["status"] == "locked":
-            audit("analyze", None, "pin-locked")
-            return self.send_json(lock_payload(check["locked_until"]), 423)
+        check = AUTH.check_pin(pin)   # بدون قفل: الرمز الخاطئ يُرفض فقط
         if check["status"] == "wrong":
             audit("analyze", None, "wrong-pin")
             return self.send_json({"error": "Incorrect PIN.", "code": "wrong_pin", "title": "Incorrect doctor PIN",
-                                   "attempts_left": check["attempts_left"], "fields": {"pin": "Incorrect PIN."}}, 401)
+                                   "fields": {"pin": "Incorrect PIN."}}, 401)
         doctor = check["doctor"]
         if check["status"] == "disabled":
             audit("analyze", str(doctor["id"]), "account-disabled")
@@ -553,11 +536,6 @@ def safe_join(root, rel):
 
 def main():
     global PORT
-    if "--reset-lockout" in sys.argv:   # استرجاع إداري: يحتاج الوصول لطرفية الجهاز نفسه
-        AUTH.reset_lockout(SITE)
-        audit("lockout-reset", SITE, "ok")
-        print("  MRI Scanner PIN lockout cleared.")
-        return
     if "--port" in sys.argv:
         PORT = int(sys.argv[sys.argv.index("--port") + 1])
     server = None

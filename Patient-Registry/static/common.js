@@ -31,7 +31,10 @@ window.MSS = (() => {
   const pinError = (pin) => (!pin ? 'Doctor PIN is required.' : /^[A-Z0-9]{4}$/.test(pin) ? '' : PIN_FORMAT);
   // Message for a rejected PIN, built from the server's code so it can be translated
   function authMessage(d) {
-    if (d.code === 'wrong_pin') return `Incorrect PIN. ${d.attempts_left} attempt${d.attempts_left === 1 ? '' : 's'} left before a 24-hour lock.`;
+    if (d.code === 'wrong_pin') {   // the Registry counts towards its 24-hour lock; the Scanner never locks
+      if (d.attempts_left == null) return 'Incorrect PIN. Check your PIN and try again.';
+      return `Incorrect PIN. ${d.attempts_left} attempt${d.attempts_left === 1 ? '' : 's'} left before a 24-hour lock.`;
+    }
     if (d.code === 'locked') return `Too many incorrect PINs. Locked until ${fmtDate(d.locked_until)}.`;
     if (d.code === 'account_disabled') return 'This doctor account is disabled. Contact the department head.';
     if (d.code === 'invalid_format') return PIN_FORMAT;
