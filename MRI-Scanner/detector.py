@@ -67,6 +67,7 @@ def load_model():
     global _model, _gate, _bank, _error
     try:
         os.environ["YOLO_VERBOSE"] = "False"
+        os.environ.setdefault("YOLO_OFFLINE", "1")   # never reach for the internet (runs offline on the Pi)
         from ultralytics import YOLO
         gate = YOLO(GATE_PATH, task="classify")
         bank = np.load(BANK_PATH).astype(np.float32)

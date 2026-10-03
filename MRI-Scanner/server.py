@@ -52,6 +52,7 @@ _request_times = defaultdict(deque)
 _rate_lock = threading.Lock()
 _record_lock = threading.Lock()   # يمنع تسجيل نفس الصورة لمريضين في نفس اللحظة
 
+mimetypes.add_type("font/woff2", ".woff2")   # bundled fonts (works offline)
 mimetypes.add_type("image/webp", ".webp")   # إصدارات بايثون القديمة على Raspberry Pi لا تعرفه
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -231,8 +232,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")
         self.send_header(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; "
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+            "font-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; "
             "connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
         )
         super().end_headers()

@@ -5,6 +5,7 @@
 cd "$(dirname "$0")"
 [ -f .venv/bin/activate ] && source .venv/bin/activate
 PY=$(command -v python || command -v python3)
+export YOLO_OFFLINE=1   # the AI runs fully offline: no update or connectivity checks
 
 "$PY" Patient-Registry/server.py &
 REGISTRY_PID=$!

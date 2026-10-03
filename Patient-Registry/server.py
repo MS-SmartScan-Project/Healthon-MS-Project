@@ -42,6 +42,7 @@ COOKIE = "mss_registry_session"
 _request_times = defaultdict(deque)
 _rate_lock = threading.Lock()
 
+mimetypes.add_type("font/woff2", ".woff2")   # bundled fonts (works offline)
 mimetypes.add_type("image/webp", ".webp")   # إصدارات بايثون القديمة على Raspberry Pi لا تعرفه
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -211,8 +212,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")
         self.send_header(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "font-src https://fonts.gstatic.com; img-src 'self' data: blob:; "
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+            "font-src 'self'; img-src 'self' data: blob:; "
             "connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
         )
         super().end_headers()
